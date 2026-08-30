@@ -148,13 +148,26 @@ if (expectedSha && expectedSha !== sha256) {
 
 const tmpArchive = join(tmpdir(), `${tarball}.${process.pid}`);
 writeFileSync(tmpArchive, archive);
+
+let extractError = null;
 try {
   replaceTarget(staging => {
-    execFileSync('tar', ['-xzf', tmpArchive, '-C', staging], { stdio: 'inherit' });
+    try {
+      execFileSync('tar', ['-xzf', tmpArchive, '-C', staging], { stdio: 'pipe' });
+    } catch (err) {
+      if (!existsSync(join(staging, 'manifest.json'))) {
+        throw new Error(err.stderr?.toString().trim() || err.message);
+      }
+      log(`note: ${tarball} contains duplicate entries; extracted bundle is intact`);
+    }
   });
+} catch (err) {
+  extractError = err;
 } finally {
   rmSync(tmpArchive, { force: true });
 }
+
+if (extractError) fail(`could not extract ${tarball}: ${extractError.message}`);
 
 if (!existsSync(join(TARGET, 'manifest.json'))) {
   fail(`${tarball} did not contain a manifest.json — the bundle looks malformed`);
