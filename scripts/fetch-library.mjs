@@ -155,11 +155,6 @@ try {
     try {
       execFileSync('tar', ['-xzf', tmpArchive, '-C', staging], { stdio: 'pipe' });
     } catch (err) {
-      // Catalogue releases built before the library's tar --no-recursion fix
-      // contain every file twice, the duplicate written as a hardlink to
-      // itself. bsdtar (the macOS default) still extracts the bundle correctly
-      // but exits non-zero after skipping the duplicates, so tar's status alone
-      // is not a reliable signal — the extracted bundle is.
       if (!existsSync(join(staging, 'manifest.json'))) {
         throw new Error(err.stderr?.toString().trim() || err.message);
       }
