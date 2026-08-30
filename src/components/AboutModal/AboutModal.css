@@ -534,6 +534,21 @@ kbd {
 }
 
 /* Mobile styles */
+.build-id {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.build-id code {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  user-select: all;
+}
+
 @media (max-width: 768px) {
   .about-modal-overlay {
     padding: 10px;
