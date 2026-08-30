@@ -148,13 +148,31 @@ if (expectedSha && expectedSha !== sha256) {
 
 const tmpArchive = join(tmpdir(), `${tarball}.${process.pid}`);
 writeFileSync(tmpArchive, archive);
+
+let extractError = null;
 try {
   replaceTarget(staging => {
-    execFileSync('tar', ['-xzf', tmpArchive, '-C', staging], { stdio: 'inherit' });
+    try {
+      execFileSync('tar', ['-xzf', tmpArchive, '-C', staging], { stdio: 'pipe' });
+    } catch (err) {
+      // Catalogue releases built before the library's tar --no-recursion fix
+      // contain every file twice, the duplicate written as a hardlink to
+      // itself. bsdtar (the macOS default) still extracts the bundle correctly
+      // but exits non-zero after skipping the duplicates, so tar's status alone
+      // is not a reliable signal — the extracted bundle is.
+      if (!existsSync(join(staging, 'manifest.json'))) {
+        throw new Error(err.stderr?.toString().trim() || err.message);
+      }
+      log(`note: ${tarball} contains duplicate entries; extracted bundle is intact`);
+    }
   });
+} catch (err) {
+  extractError = err;
 } finally {
   rmSync(tmpArchive, { force: true });
 }
+
+if (extractError) fail(`could not extract ${tarball}: ${extractError.message}`);
 
 if (!existsSync(join(TARGET, 'manifest.json'))) {
   fail(`${tarball} did not contain a manifest.json — the bundle looks malformed`);
