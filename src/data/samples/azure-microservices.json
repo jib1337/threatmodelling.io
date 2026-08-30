@@ -1,0 +1,227 @@
+{
+  "version": "1.4",
+  "name": "Azure Microservices",
+  "createdAt": "2026-04-14T11:26:01.621Z",
+  "updatedAt": "2026-04-14T11:26:01.621Z",
+  "nodes": [
+    {
+      "id": "n1",
+      "technologyId": "actor-mobile",
+      "position": {
+        "x": -60,
+        "y": 140
+      },
+      "sensitivity": "public",
+      "customName": "Mobile App"
+    },
+    {
+      "id": "n2",
+      "technologyId": "azure-front-door",
+      "position": {
+        "x": 80,
+        "y": 100
+      },
+      "sensitivity": "public",
+      "customName": "Front Door",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n3",
+      "technologyId": "azure-waf",
+      "position": {
+        "x": 80,
+        "y": 360
+      },
+      "sensitivity": "internal",
+      "customName": "WAF Policy",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n4",
+      "technologyId": "azure-aks",
+      "position": {
+        "x": 80,
+        "y": 360
+      },
+      "sensitivity": "confidential",
+      "customName": "AKS Cluster",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n5",
+      "technologyId": "azure-service-bus",
+      "position": {
+        "x": 420,
+        "y": 100
+      },
+      "sensitivity": "confidential",
+      "customName": "Service Bus",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n6",
+      "technologyId": "azure-key-vault",
+      "position": {
+        "x": 80,
+        "y": 100
+      },
+      "sensitivity": "restricted",
+      "customName": "Key Vault",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n7",
+      "technologyId": "azure-cosmos-db",
+      "position": {
+        "x": 80,
+        "y": 108
+      },
+      "sensitivity": "restricted",
+      "customName": "Cosmos DB",
+      "zoneId": "z3"
+    },
+    {
+      "id": "n8",
+      "technologyId": "azure-cache-redis",
+      "position": {
+        "x": 380,
+        "y": 108
+      },
+      "sensitivity": "confidential",
+      "customName": "Redis Cache",
+      "zoneId": "z3"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e2",
+      "source": "n2",
+      "target": "n3",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "WAF inspection"
+    },
+    {
+      "id": "e6",
+      "source": "n4",
+      "target": "n7",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Document reads/writes"
+    },
+    {
+      "id": "c4710a38-f722-4c6d-b1da-aee1e77335d2",
+      "source": "n1",
+      "target": "n2",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTPS requests"
+    },
+    {
+      "id": "33bc5f20-cdb7-4d7c-a4b5-9a5bf3e1b3b8",
+      "source": "n3",
+      "target": "n4",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTPS traffi"
+    },
+    {
+      "id": "c976bf96-478f-4255-b385-f04d8f321659",
+      "source": "n4",
+      "target": "n6",
+      "sourceHandle": "top-source",
+      "targetHandle": "bottom-target",
+      "label": "Secret retrieval"
+    },
+    {
+      "id": "f3de74b1-59c6-412a-8341-8fd959339f1a",
+      "source": "n4",
+      "target": "n5",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Event consumption"
+    },
+    {
+      "id": "df0c7954-4c15-4ebc-b48e-594ef2a03bb4",
+      "source": "n4",
+      "target": "n8",
+      "sourceHandle": "right-source",
+      "targetHandle": "top-target",
+      "label": "Cache lookups"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "zoneType": "public",
+      "position": {
+        "x": 200,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 328,
+        "height": 532
+      },
+      "customName": "Edge Network",
+      "riskReductionEnabled": false,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z2",
+      "zoneType": "private",
+      "networkType": "azure-vnet",
+      "position": {
+        "x": 540,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 600,
+        "height": 560
+      },
+      "customName": "Application VNet",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z3",
+      "zoneType": "private",
+      "networkType": "azure-vnet",
+      "position": {
+        "x": 540,
+        "y": 612
+      },
+      "dimensions": {
+        "width": 600,
+        "height": 298
+      },
+      "customName": "Data VNet",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 25
+    }
+  ],
+  "pathwayMitigationSettings": {
+    "enabled": false,
+    "mitigations": {
+      "ddos-protection": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 50
+      },
+      "waf-protection": {
+        "enabled": false,
+        "mode": "remove",
+        "reductionPercent": 50
+      },
+      "rate-limiting": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 30
+      },
+      "network-firewall": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 40
+      }
+    }
+  }
+}

@@ -1,0 +1,80 @@
+.edge-label-container {
+  position: relative;
+  font-size: 11px;
+  z-index: 10;
+}
+
+.edge-label {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edge-label.has-label {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.edge-label.empty {
+  opacity: 0;
+  font-size: 10px;
+}
+
+.edge-label-container:hover .edge-label.empty {
+  opacity: 0.6;
+}
+
+.edge-label-container.selected .edge-label {
+  border-color: var(--accent-blue);
+}
+
+.edge-label:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.edge-label-input {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-blue);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-size: 11px;
+  outline: none;
+  min-width: 120px;
+}
+
+.edge-label-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.edge-delete-button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-red, #f85149);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  padding-bottom: 2px;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.edge-delete-button:hover {
+  transform: scale(1.1);
+  background: #ff6b6b;
+}

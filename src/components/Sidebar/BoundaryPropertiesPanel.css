@@ -1,0 +1,305 @@
+.boundary-properties-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+.boundary-properties-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.boundary-properties-panel .panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.boundary-properties-panel .close-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.boundary-properties-panel .close-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.boundary-properties-panel .panel-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.boundary-properties-panel .property-section {
+  margin-bottom: 20px;
+}
+
+.boundary-properties-panel .property-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.boundary-properties-panel .display-name-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.boundary-properties-panel .display-name-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.boundary-properties-panel .display-name-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* Network type select dropdown */
+.boundary-properties-panel .network-type-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M2.5 4.5l3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.boundary-properties-panel .network-type-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.boundary-properties-panel .network-type-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+/* Boundary type toggle button */
+.boundary-type-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.boundary-type-button:hover {
+  background: var(--bg-secondary);
+}
+
+.boundary-type-button.boundary-type-private {
+  border-color: #52b3ff;
+  background: rgba(82, 179, 255, 0.1);
+}
+
+.boundary-type-button.boundary-type-public {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.boundary-type-label {
+  flex: 1;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.boundary-type-toggle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Risk reduction section */
+.risk-reduction-section {
+  padding: 12px;
+  background: rgba(82, 179, 255, 0.05);
+  border: 1px solid rgba(82, 179, 255, 0.2);
+  border-radius: 8px;
+}
+
+.risk-reduction-section .property-label {
+  margin-bottom: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.risk-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #52b3ff;
+}
+
+.checkbox-text {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* Slider container */
+.reduction-slider-container {
+  margin-top: 16px;
+}
+
+.slider-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.slider-label strong {
+  color: #52b3ff;
+  font-size: 16px;
+}
+
+.reduction-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.reduction-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #52b3ff;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.reduction-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.reduction-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #52b3ff;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.reduction-disabled-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.public-boundary-info {
+  padding: 12px;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Delete button */
+.delete-boundary-button {
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-boundary-button:hover {
+  background: var(--accent-red);
+  color: white;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .boundary-properties-panel {
+    width: 100%;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    height: auto;
+    max-height: 50vh;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    border-radius: 12px 12px 0 0;
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "version": "1.4",
+  "name": "GCP AI/ML Pipeline",
+  "createdAt": "2026-04-15T09:16:16.329Z",
+  "updatedAt": "2026-04-15T09:16:16.329Z",
+  "nodes": [
+    {
+      "id": "n1",
+      "technologyId": "actor-server",
+      "position": {
+        "x": 0,
+        "y": 160
+      },
+      "sensitivity": "internal",
+      "customName": "Data Sources"
+    },
+    {
+      "id": "n2",
+      "technologyId": "gcp-pub-sub",
+      "position": {
+        "x": 60.62294968018202,
+        "y": 96.1202729918241
+      },
+      "sensitivity": "internal",
+      "customName": "Data Ingestion",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n3",
+      "technologyId": "gcp-cloud-functions",
+      "position": {
+        "x": 60.62294968018202,
+        "y": 396.1202729918241
+      },
+      "sensitivity": "confidential",
+      "customName": "Preprocessing",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n4",
+      "technologyId": "gcp-cloud-storage",
+      "position": {
+        "x": 380.62294968018205,
+        "y": 236.1202729918241
+      },
+      "sensitivity": "confidential",
+      "customName": "Training Data",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n5",
+      "technologyId": "gcp-bigquery",
+      "position": {
+        "x": 60,
+        "y": 120
+      },
+      "sensitivity": "restricted",
+      "customName": "Feature Store",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n6",
+      "technologyId": "gcp-vertex-ai",
+      "position": {
+        "x": 60,
+        "y": 400
+      },
+      "sensitivity": "restricted",
+      "customName": "Model Training",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n7",
+      "technologyId": "gcp-artifact-registry",
+      "position": {
+        "x": 420,
+        "y": 400
+      },
+      "sensitivity": "confidential",
+      "customName": "Model Registry",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n8",
+      "technologyId": "gcp-cloud-functions",
+      "position": {
+        "x": 640,
+        "y": 120
+      },
+      "sensitivity": "confidential",
+      "customName": "Serving Endpoint",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n9",
+      "technologyId": "actor-api-client",
+      "position": {
+        "x": 1040,
+        "y": 160
+      },
+      "sensitivity": "internal",
+      "customName": "API Consumers"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e2",
+      "source": "n2",
+      "target": "n3",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Event triggers"
+    },
+    {
+      "id": "e5",
+      "source": "n5",
+      "target": "n6",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Training features"
+    },
+    {
+      "id": "e9",
+      "source": "n9",
+      "target": "n8",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Inference requests"
+    },
+    {
+      "id": "5eebac2f-233d-4833-9102-6943a7c3f204",
+      "source": "n1",
+      "target": "n2",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "right-target",
+      "label": "Raw data stream"
+    },
+    {
+      "id": "5819c3f0-7139-4dc7-8b40-3e84259a2747",
+      "source": "n3",
+      "target": "n4",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Clean data"
+    },
+    {
+      "id": "7e0906dc-ee58-4a5c-8d77-5f3b3ac1941a",
+      "source": "n4",
+      "target": "n5",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Features"
+    },
+    {
+      "id": "f417e8cf-34fd-475d-9207-7cbc47b62de4",
+      "source": "n4",
+      "target": "n6",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "left-target",
+      "label": "Training datasets"
+    },
+    {
+      "id": "560e8bcc-7f2c-4beb-b65f-3b69a639a41f",
+      "source": "n6",
+      "target": "n7",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Model artifacts"
+    },
+    {
+      "id": "d7c17c8a-b91d-4eb7-bc78-816e81b7f490",
+      "source": "n7",
+      "target": "n8",
+      "sourceHandle": "right-source",
+      "targetHandle": "bottom-target",
+      "label": "Model deployment"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "zoneType": "private",
+      "networkType": "gcp-vpc",
+      "position": {
+        "x": -220,
+        "y": 340
+      },
+      "dimensions": {
+        "width": 606,
+        "height": 583
+      },
+      "customName": "Data Preparation",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z2",
+      "zoneType": "private",
+      "networkType": "gcp-vpc",
+      "position": {
+        "x": 400,
+        "y": 340
+      },
+      "dimensions": {
+        "width": 890,
+        "height": 590
+      },
+      "customName": "ML Platform",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    }
+  ],
+  "pathwayMitigationSettings": {
+    "enabled": false,
+    "mitigations": {
+      "ddos-protection": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 50
+      },
+      "waf-protection": {
+        "enabled": false,
+        "mode": "remove",
+        "reductionPercent": 50
+      },
+      "rate-limiting": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 30
+      },
+      "network-firewall": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 40
+      }
+    }
+  }
+}

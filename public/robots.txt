@@ -1,0 +1,6 @@
+# Robots.txt for threatmodelling.io
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://threatmodelling.io/sitemap.xml

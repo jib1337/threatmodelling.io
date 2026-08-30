@@ -1,0 +1,265 @@
+/* React Flow node wrapper - must allow pointer events for touch resize to work.
+   The interior .boundary-node has pointer-events: none to allow click-through,
+   while borders, header, and resize handles explicitly enable pointer-events. */
+.react-flow__node-boundaryNode {
+  pointer-events: auto !important;
+}
+
+/* Boundary Node Container */
+.boundary-node {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 1px dashed;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  position: relative;
+}
+
+/* Clickable border edges - allows selecting boundary by clicking on edges */
+/* Split into four separate edge elements to avoid blocking clicks in the interior */
+.boundary-border-top,
+.boundary-border-right,
+.boundary-border-bottom,
+.boundary-border-left {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 0;
+}
+
+.boundary-border-top {
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  height: 16px;
+}
+
+.boundary-border-bottom {
+  bottom: -8px;
+  left: -8px;
+  right: -8px;
+  height: 16px;
+}
+
+.boundary-border-left {
+  top: 8px;
+  bottom: 8px;
+  left: -8px;
+  width: 16px;
+}
+
+.boundary-border-right {
+  top: 8px;
+  bottom: 8px;
+  right: -8px;
+  width: 16px;
+}
+
+.boundary-node.selected {
+  border-width: 1px;
+}
+
+.boundary-node.selected.boundary-public {
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+}
+
+.boundary-node.selected.boundary-private {
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+/* Boundary Header */
+.boundary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.boundary-header-public {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.boundary-header-private {
+  background: rgba(82, 179, 255, 0.15);
+  color: #52b3ff;
+}
+
+.boundary-label {
+  flex: 1;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boundary-label-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.boundary-type-hint {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.boundary-network-type {
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(82, 179, 255, 0.2);
+  color: #52b3ff;
+}
+
+:root[data-theme="dark"] .boundary-network-type {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+/* Boundary Name Input */
+.boundary-name-input {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.boundary-name-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.boundary-name-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* Boundary Actions */
+.boundary-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.boundary-node:hover .boundary-actions {
+  opacity: 1;
+}
+
+.boundary-toggle-button,
+.boundary-delete-button {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.boundary-toggle-button {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.boundary-toggle-button:hover {
+  background: var(--bg-secondary);
+}
+
+.boundary-delete-button {
+  background: var(--accent-red);
+  color: white;
+  font-size: 14px;
+  padding-bottom: 2px;
+}
+
+.boundary-delete-button:hover {
+  background: #da3633;
+}
+
+/* Boundary Content */
+.boundary-content {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 8px 12px;
+}
+
+/* Node Resizer Styling */
+.boundary-resize-line {
+  border-color: var(--accent-blue) !important;
+  pointer-events: none !important;
+}
+
+.boundary-resize-handle {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 2px !important;
+  background: var(--accent-blue) !important;
+  border: none !important;
+  pointer-events: auto !important;
+  /* Enable touch interactions for resize handles */
+  touch-action: none !important;
+}
+
+/* Increase touch target size on mobile/touch devices */
+@media (pointer: coarse) {
+  .boundary-resize-handle {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 4px !important;
+  }
+}
+
+/* Dark mode adjustments */
+:root[data-theme="dark"] .boundary-header-public {
+  color: #fb923c;
+}
+
+:root[data-theme="dark"] .boundary-header-private {
+  color: #4ade80;
+}
+
+/* Light mode: same tinted treatment as dark mode, with deeper text tones for
+   contrast on the light canvas. Solid bars were only needed against the old
+   grey background. */
+:root.light-mode .boundary-header-public {
+  background: rgba(234, 88, 12, 0.12);
+  color: #9a3412;
+}
+
+:root.light-mode .boundary-header-private {
+  background: rgba(31, 111, 235, 0.12);
+  color: #0550ae;
+}
+
+:root.light-mode .boundary-header-public .boundary-type-hint,
+:root.light-mode .boundary-header-private .boundary-type-hint {
+  color: inherit;
+  opacity: 0.75;
+}
+
+:root.light-mode .boundary-header-private .boundary-network-type {
+  background: rgba(5, 80, 174, 0.12);
+  color: #0550ae;
+}

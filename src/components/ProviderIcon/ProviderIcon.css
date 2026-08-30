@@ -1,0 +1,33 @@
+.provider-icon,
+.provider-icon-emoji {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Size variants */
+.provider-icon-small {
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.provider-icon-medium {
+  width: 24px;
+  height: 24px;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.provider-icon-large {
+  width: 32px;
+  height: 32px;
+  font-size: 28px;
+  line-height: 32px;
+}
+
+/* Ensure emojis are centered */
+.provider-icon-emoji {
+  text-align: center;
+}

@@ -1,0 +1,34 @@
+.actor-icon,
+.actor-icon-emoji {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+
+/* Size variants */
+.actor-icon-small {
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.actor-icon-medium {
+  width: 24px;
+  height: 24px;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.actor-icon-large {
+  width: 32px;
+  height: 32px;
+  font-size: 28px;
+  line-height: 32px;
+}
+
+/* Ensure emojis are centered */
+.actor-icon-emoji {
+  text-align: center;
+}

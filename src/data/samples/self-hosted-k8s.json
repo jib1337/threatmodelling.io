@@ -1,0 +1,354 @@
+{
+  "version": "1.4",
+  "name": "Self-Hosted Kubernetes Platform",
+  "createdAt": "2026-04-15T10:14:07.305Z",
+  "updatedAt": "2026-04-15T10:14:07.305Z",
+  "nodes": [
+    {
+      "id": "n1",
+      "technologyId": "actor-desktop",
+      "position": {
+        "x": -40,
+        "y": 200
+      },
+      "sensitivity": "public",
+      "customName": "Users"
+    },
+    {
+      "id": "n2",
+      "technologyId": "self-haproxy",
+      "position": {
+        "x": 80,
+        "y": 160
+      },
+      "sensitivity": "public",
+      "customName": "HAProxy LB",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n3",
+      "technologyId": "self-nginx",
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "sensitivity": "public",
+      "customName": "Nginx Ingress",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n4",
+      "technologyId": "self-keycloak",
+      "position": {
+        "x": 140,
+        "y": 80
+      },
+      "sensitivity": "restricted",
+      "customName": "Keycloak SSO",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n5",
+      "technologyId": "self-istio",
+      "position": {
+        "x": 140,
+        "y": 440
+      },
+      "sensitivity": "internal",
+      "customName": "Istio Mesh",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n6",
+      "technologyId": "self-kubernetes",
+      "position": {
+        "x": 480,
+        "y": 440
+      },
+      "sensitivity": "confidential",
+      "customName": "K8s Cluster",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n7",
+      "technologyId": "self-argocd",
+      "position": {
+        "x": 480,
+        "y": 200
+      },
+      "sensitivity": "confidential",
+      "customName": "ArgoCD",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n8",
+      "technologyId": "self-postgresql",
+      "position": {
+        "x": 60,
+        "y": 80
+      },
+      "sensitivity": "restricted",
+      "customName": "PostgreSQL",
+      "zoneId": "z3"
+    },
+    {
+      "id": "n9",
+      "technologyId": "self-redis",
+      "position": {
+        "x": 240,
+        "y": 220
+      },
+      "sensitivity": "confidential",
+      "customName": "Redis Cache",
+      "zoneId": "z3"
+    },
+    {
+      "id": "n10",
+      "technologyId": "self-minio",
+      "position": {
+        "x": 240,
+        "y": 560
+      },
+      "sensitivity": "confidential",
+      "customName": "MinIO Storage",
+      "zoneId": "z3"
+    },
+    {
+      "id": "n11",
+      "technologyId": "self-vault",
+      "position": {
+        "x": 240,
+        "y": 380
+      },
+      "sensitivity": "restricted",
+      "customName": "HashiCorp Vault",
+      "zoneId": "z3"
+    },
+    {
+      "id": "n12",
+      "technologyId": "self-prometheus",
+      "position": {
+        "x": 600,
+        "y": 80
+      },
+      "sensitivity": "internal",
+      "customName": "Prometheus",
+      "zoneId": "z4"
+    },
+    {
+      "id": "n13",
+      "technologyId": "self-grafana",
+      "position": {
+        "x": 1200,
+        "y": 80
+      },
+      "sensitivity": "internal",
+      "customName": "Grafana",
+      "zoneId": "z4"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "n1",
+      "target": "n2",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTPS requests"
+    },
+    {
+      "id": "e2",
+      "source": "n2",
+      "target": "n3",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Forwarded HTTP"
+    },
+    {
+      "id": "e3",
+      "source": "n3",
+      "target": "n4",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "OIDC auth"
+    },
+    {
+      "id": "e4",
+      "source": "n3",
+      "target": "n5",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Ingress traffic"
+    },
+    {
+      "id": "e5",
+      "source": "n5",
+      "target": "n6",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "mTLS routing"
+    },
+    {
+      "id": "e6",
+      "source": "n6",
+      "target": "n8",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "SQL queries"
+    },
+    {
+      "id": "e7",
+      "source": "n6",
+      "target": "n9",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Cache operations"
+    },
+    {
+      "id": "e8",
+      "source": "n6",
+      "target": "n10",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Object storage"
+    },
+    {
+      "id": "e9",
+      "source": "n6",
+      "target": "n11",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Secret retrieval"
+    },
+    {
+      "id": "e10",
+      "source": "n7",
+      "target": "n6",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "GitOps sync"
+    },
+    {
+      "id": "e11",
+      "source": "n4",
+      "target": "n8",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "User store"
+    },
+    {
+      "id": "e12",
+      "source": "n12",
+      "target": "n6",
+      "sourceHandle": "top-source",
+      "targetHandle": "bottom-target",
+      "label": "Metrics scraping"
+    },
+    {
+      "id": "e13",
+      "source": "n12",
+      "target": "n5",
+      "sourceHandle": "top-source",
+      "targetHandle": "bottom-target",
+      "label": "Mesh metrics"
+    },
+    {
+      "id": "e14",
+      "source": "n13",
+      "target": "n12",
+      "sourceHandle": "left-source",
+      "targetHandle": "right-target",
+      "label": "PromQL queries"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "zoneType": "public",
+      "position": {
+        "x": 200,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 300,
+        "height": 720
+      },
+      "customName": "DMZ",
+      "riskReductionEnabled": false,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z2",
+      "zoneType": "private",
+      "networkType": "generic",
+      "position": {
+        "x": 520,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 760,
+        "height": 720
+      },
+      "customName": "Cluster Network",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z3",
+      "zoneType": "private",
+      "networkType": "generic",
+      "position": {
+        "x": 1300,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 560,
+        "height": 720
+      },
+      "customName": "Data Network",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 25
+    },
+    {
+      "id": "z4",
+      "zoneType": "private",
+      "networkType": "generic",
+      "position": {
+        "x": 200,
+        "y": 780
+      },
+      "dimensions": {
+        "width": 1660,
+        "height": 240
+      },
+      "customName": "Observability",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    }
+  ],
+  "pathwayMitigationSettings": {
+    "enabled": false,
+    "mitigations": {
+      "ddos-protection": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 50
+      },
+      "waf-protection": {
+        "enabled": false,
+        "mode": "remove",
+        "reductionPercent": 50
+      },
+      "rate-limiting": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 30
+      },
+      "network-firewall": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 40
+      }
+    }
+  }
+}

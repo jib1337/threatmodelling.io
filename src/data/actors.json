@@ -1,0 +1,47 @@
+{
+  "provider": "actor",
+  "displayName": "Actor",
+  "idPrefix": "actor-",
+  "services": [
+    {
+      "id": "actor-mobile",
+      "name": "Mobile Device",
+      "provider": "actor",
+      "category": "actor",
+      "description": "Smartphone or tablet client",
+      "threatIds": []
+    },
+    {
+      "id": "actor-desktop",
+      "name": "Desktop PC",
+      "provider": "actor",
+      "category": "actor",
+      "description": "Computer or laptop client",
+      "threatIds": []
+    },
+    {
+      "id": "actor-iot",
+      "name": "IoT Device",
+      "provider": "actor",
+      "category": "actor",
+      "description": "Sensors, embedded devices, or smart devices",
+      "threatIds": []
+    },
+    {
+      "id": "actor-api-client",
+      "name": "API Client",
+      "provider": "actor",
+      "category": "actor",
+      "description": "External API integration or service consumer",
+      "threatIds": []
+    },
+    {
+      "id": "actor-server",
+      "name": "External Server",
+      "provider": "actor",
+      "category": "actor",
+      "description": "External or on-premise server",
+      "threatIds": []
+    }
+  ]
+}

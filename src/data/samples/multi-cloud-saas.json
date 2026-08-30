@@ -1,0 +1,208 @@
+{
+  "version": "1.4",
+  "name": "Multi-Cloud SaaS Platform",
+  "createdAt": "2026-04-15T09:29:10.241Z",
+  "updatedAt": "2026-04-15T09:29:10.241Z",
+  "nodes": [
+    {
+      "id": "n1",
+      "technologyId": "actor-desktop",
+      "position": {
+        "x": 40,
+        "y": -100
+      },
+      "sensitivity": "public",
+      "customName": "Customers"
+    },
+    {
+      "id": "n2",
+      "technologyId": "saas-cloudflare",
+      "position": {
+        "x": 380,
+        "y": -160
+      },
+      "sensitivity": "public",
+      "customName": "Cloudflare CDN/WAF"
+    },
+    {
+      "id": "n3",
+      "technologyId": "aws-elb",
+      "position": {
+        "x": 80,
+        "y": 100
+      },
+      "sensitivity": "internal",
+      "customName": "Load Balancer",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n4",
+      "technologyId": "aws-ecs",
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "sensitivity": "confidential",
+      "customName": "Application Services",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n5",
+      "technologyId": "aws-rds",
+      "position": {
+        "x": 80,
+        "y": 240
+      },
+      "sensitivity": "restricted",
+      "customName": "Primary Database",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n6",
+      "technologyId": "saas-okta",
+      "position": {
+        "x": 380,
+        "y": 340
+      },
+      "sensitivity": "restricted",
+      "customName": "Okta SSO"
+    },
+    {
+      "id": "n7",
+      "technologyId": "saas-datadog",
+      "position": {
+        "x": 760,
+        "y": 520
+      },
+      "sensitivity": "internal",
+      "customName": "Monitoring"
+    },
+    {
+      "id": "n8",
+      "technologyId": "saas-github-actions",
+      "position": {
+        "x": 380,
+        "y": 120
+      },
+      "sensitivity": "confidential",
+      "customName": "CI/CD Pipeline"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e3",
+      "source": "n3",
+      "target": "n4",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "HTTP requests"
+    },
+    {
+      "id": "e6",
+      "source": "n4",
+      "target": "n7",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Metrics & logs"
+    },
+    {
+      "id": "aa43618d-6ea5-42fd-bc82-be288cda0b04",
+      "source": "n4",
+      "target": "n5",
+      "sourceHandle": "right-source",
+      "targetHandle": "bottom-target",
+      "label": "SQL queries"
+    },
+    {
+      "id": "8d78458c-ee2a-4c66-9597-545a381aeeca",
+      "source": "n2",
+      "target": "n3",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Proxied traffic"
+    },
+    {
+      "id": "5794fbe9-235b-470c-9eaf-84d3d30df0e4",
+      "source": "n8",
+      "target": "n4",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "left-target",
+      "label": "App deployment"
+    },
+    {
+      "id": "31bfd9e2-2671-47fd-a0f4-9e6a3724d820",
+      "source": "n1",
+      "target": "n2",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTPS requests"
+    },
+    {
+      "id": "9ed37e93-dfc3-4841-9e5c-e790eaf6f10d",
+      "source": "n4",
+      "target": "n6",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "right-target",
+      "label": "SAML/OIDC Auth"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "zoneType": "private",
+      "networkType": "aws-vpc",
+      "position": {
+        "x": 680,
+        "y": -180
+      },
+      "dimensions": {
+        "width": 320,
+        "height": 610
+      },
+      "customName": "Application VPC",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z2",
+      "zoneType": "private",
+      "networkType": "aws-vpc",
+      "position": {
+        "x": 1020,
+        "y": -180
+      },
+      "dimensions": {
+        "width": 320,
+        "height": 600
+      },
+      "customName": "Data VPC",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    }
+  ],
+  "pathwayMitigationSettings": {
+    "enabled": false,
+    "mitigations": {
+      "ddos-protection": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 50
+      },
+      "waf-protection": {
+        "enabled": false,
+        "mode": "remove",
+        "reductionPercent": 50
+      },
+      "rate-limiting": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 30
+      },
+      "network-firewall": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 40
+      }
+    }
+  }
+}

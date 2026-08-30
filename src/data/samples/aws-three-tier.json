@@ -1,0 +1,262 @@
+{
+  "version": "1.4",
+  "name": "AWS Three-Tier Web Application",
+  "createdAt": "2026-04-14T10:42:36.817Z",
+  "updatedAt": "2026-04-14T10:42:36.817Z",
+  "nodes": [
+    {
+      "id": "n1",
+      "technologyId": "actor-desktop",
+      "position": {
+        "x": -20,
+        "y": 280
+      },
+      "sensitivity": "public",
+      "customName": "End Users"
+    },
+    {
+      "id": "n2",
+      "technologyId": "aws-cloudfront",
+      "position": {
+        "x": 160,
+        "y": 240
+      },
+      "sensitivity": "public",
+      "customName": "CDN",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n3",
+      "technologyId": "aws-waf",
+      "position": {
+        "x": 40,
+        "y": 240
+      },
+      "sensitivity": "internal",
+      "customName": "WAF",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n4",
+      "technologyId": "aws-s3",
+      "position": {
+        "x": 160,
+        "y": 480
+      },
+      "sensitivity": "public",
+      "customName": "Static Assets",
+      "zoneId": "z1"
+    },
+    {
+      "id": "n5",
+      "technologyId": "aws-elb",
+      "position": {
+        "x": 360,
+        "y": 240
+      },
+      "sensitivity": "internal",
+      "customName": "Load Balancer",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n6",
+      "technologyId": "aws-ec2",
+      "position": {
+        "x": 680,
+        "y": 100
+      },
+      "sensitivity": "confidential",
+      "customName": "App Server 1",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n7",
+      "technologyId": "aws-ec2",
+      "position": {
+        "x": 680,
+        "y": 460
+      },
+      "sensitivity": "confidential",
+      "customName": "App Server 2",
+      "zoneId": "z2"
+    },
+    {
+      "id": "n8",
+      "technologyId": "aws-rds",
+      "position": {
+        "x": 300,
+        "y": 280
+      },
+      "sensitivity": "restricted",
+      "customName": "Primary Database",
+      "zoneId": "z3"
+    },
+    {
+      "id": "n9",
+      "technologyId": "aws-elasticache",
+      "position": {
+        "x": 40,
+        "y": 280
+      },
+      "sensitivity": "confidential",
+      "customName": "Session Cache",
+      "zoneId": "z3"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e3",
+      "source": "n2",
+      "target": "n4",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Static content"
+    },
+    {
+      "id": "ba3c0d95-3a70-4721-9e34-14b856699732",
+      "source": "n1",
+      "target": "n2",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTPS requests"
+    },
+    {
+      "id": "643f36a4-3030-4b1b-892e-df2074d2eb1a",
+      "source": "n2",
+      "target": "n3",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Filtered traffic"
+    },
+    {
+      "id": "cbe753f2-f549-4e0e-9f5a-7b02e6144e99",
+      "source": "n3",
+      "target": "n5",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "Clean traffic"
+    },
+    {
+      "id": "f25fa7d2-4ceb-4f00-9d9d-bd127cd85578",
+      "source": "n5",
+      "target": "n6",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTP requests"
+    },
+    {
+      "id": "a62a0965-4301-45c4-8dbf-00be53897351",
+      "source": "n5",
+      "target": "n7",
+      "sourceHandle": "right-source",
+      "targetHandle": "left-target",
+      "label": "HTTP requests"
+    },
+    {
+      "id": "7a63632f-5cff-495f-865d-3099f0da2735",
+      "source": "n7",
+      "target": "n8",
+      "sourceHandle": "right-source",
+      "targetHandle": "bottom-target",
+      "label": "SQL queries"
+    },
+    {
+      "id": "5f9f91ef-35f1-46b4-86fc-df6199ccf9a8",
+      "source": "n6",
+      "target": "n8",
+      "sourceHandle": "right-source",
+      "targetHandle": "top-target",
+      "label": "SQL queries"
+    },
+    {
+      "id": "e91e694d-36ce-475c-a943-12db783d8323",
+      "source": "n6",
+      "target": "n9",
+      "sourceHandle": "bottom-source",
+      "targetHandle": "top-target",
+      "label": "Session data"
+    },
+    {
+      "id": "270952e1-13d2-4ca3-b4aa-11aae20fb13b",
+      "source": "n7",
+      "target": "n9",
+      "sourceHandle": "top-source",
+      "targetHandle": "bottom-target",
+      "label": "Session data"
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "zoneType": "public",
+      "position": {
+        "x": 260,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 470,
+        "height": 650
+      },
+      "customName": "Public Subnet",
+      "riskReductionEnabled": false,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z2",
+      "zoneType": "private",
+      "networkType": "aws-vpc",
+      "position": {
+        "x": 740,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 990,
+        "height": 650
+      },
+      "customName": "Application Subnet",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 20
+    },
+    {
+      "id": "z3",
+      "zoneType": "private",
+      "networkType": "aws-vpc",
+      "position": {
+        "x": 1740,
+        "y": 40
+      },
+      "dimensions": {
+        "width": 500,
+        "height": 650
+      },
+      "customName": "Data Subnet",
+      "riskReductionEnabled": true,
+      "riskReductionPercent": 25
+    }
+  ],
+  "pathwayMitigationSettings": {
+    "enabled": false,
+    "mitigations": {
+      "ddos-protection": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 50
+      },
+      "waf-protection": {
+        "enabled": false,
+        "mode": "remove",
+        "reductionPercent": 50
+      },
+      "rate-limiting": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 30
+      },
+      "network-firewall": {
+        "enabled": false,
+        "mode": "reduce",
+        "reductionPercent": 40
+      }
+    }
+  }
+}

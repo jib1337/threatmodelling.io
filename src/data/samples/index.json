@@ -1,0 +1,60 @@
+{
+  "samples": [
+    {
+      "id": "aws-three-tier",
+      "name": "AWS Three-Tier Web App",
+      "description": "Classic three-tier web application on AWS with CloudFront CDN, WAF protection, load-balanced EC2 instances, RDS database, and ElastiCache for session management. Demonstrates public/private network zones and layered security.",
+      "providerTag": "aws",
+      "file": "aws-three-tier.json"
+    },
+    {
+      "id": "aws-rag",
+      "name": "RAG Knowledge Base",
+      "description": "Retrieval-Augmented Generation architecture using AWS Bedrock for LLM inference, OpenSearch for vector storage, and Lambda functions for query handling and document ingestion. Shows how AI workloads interact with data stores.",
+      "providerTag": "aws",
+      "file": "aws-rag.json"
+    },
+    {
+      "id": "gcp-data-pipeline",
+      "name": "GCP Data Pipeline",
+      "description": "Streaming and batch data pipeline on Google Cloud using Pub/Sub for ingestion, Cloud Functions for validation, Dataflow for ETL processing, and BigQuery as the analytics warehouse. Includes raw and processed data storage tiers.",
+      "providerTag": "gcp",
+      "file": "gcp-data-pipeline.json"
+    },
+    {
+      "id": "azure-microservices",
+      "name": "Azure Microservices",
+      "description": "Microservices architecture on Azure with Front Door and WAF at the edge, AKS for container orchestration, Cosmos DB for data, Service Bus for async messaging, Redis for caching, and Key Vault for secrets management.",
+      "providerTag": "azure",
+      "file": "azure-microservices.json"
+    },
+    {
+      "id": "multi-cloud-saas",
+      "name": "Multi-Cloud SaaS Platform",
+      "description": "Multi-cloud SaaS application combining Cloudflare for CDN/WAF, AWS ECS and RDS for compute and data, Okta for identity, Datadog for observability, and GitHub Actions for CI/CD. Shows cross-provider integration patterns.",
+      "providerTag": "multi",
+      "file": "multi-cloud-saas.json"
+    },
+    {
+      "id": "self-hosted-k8s",
+      "name": "Self-Hosted Kubernetes",
+      "description": "Self-hosted Kubernetes platform with HAProxy load balancing, Nginx ingress, Keycloak SSO, Istio service mesh, and ArgoCD GitOps. Backed by PostgreSQL, Redis, MinIO, and HashiCorp Vault, with Prometheus and Grafana observability. Demonstrates on-premises zero-trust patterns across DMZ, cluster, data, and observability zones.",
+      "providerTag": "self-hosted",
+      "file": "self-hosted-k8s.json"
+    },
+    {
+      "id": "aws-serverless",
+      "name": "AWS Serverless Event-Driven",
+      "description": "Fully serverless event-driven architecture on AWS with API Gateway, Cognito auth, Lambda functions, SQS/SNS for messaging, EventBridge for event routing, DynamoDB for storage, and Step Functions for workflow orchestration.",
+      "providerTag": "aws",
+      "file": "aws-serverless.json"
+    },
+    {
+      "id": "gcp-ai-ml",
+      "name": "GCP AI/ML Pipeline",
+      "description": "End-to-end machine learning pipeline on Google Cloud with Pub/Sub ingestion, Cloud Functions for preprocessing, BigQuery as a feature store, Vertex AI for model training, and Artifact Registry for model versioning and deployment.",
+      "providerTag": "gcp",
+      "file": "gcp-ai-ml.json"
+    }
+  ]
+}

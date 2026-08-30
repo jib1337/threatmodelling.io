@@ -1,0 +1,28 @@
+{
+  "name": "ThreatModelling.io",
+  "short_name": "ThreatModel",
+  "description": "Free online threat modelling tool. Drag and drop cloud services, auto-generate STRIDE threats with MITRE ATT&CK mappings. No signup required.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["security", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr",
+  "orientation": "any",
+  "scope": "/"
+}

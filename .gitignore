@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+
+# Technology & threat catalogue — fetched at build time from its own repository,
+# never committed here. See scripts/fetch-library.mjs.
+src/data/library
+src/data/library.staging
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Test coverage
+coverage
+
+# Local helper scripts
+helpers
+
+# Local Claude Code settings
+.claude/settings.local.json

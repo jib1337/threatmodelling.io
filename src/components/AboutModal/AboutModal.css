@@ -1,0 +1,599 @@
+.about-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.about-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.about-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 3px;
+  transition: all 0.2s;
+}
+
+.about-modal-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.about-modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 16px 0;
+  gap: 4px;
+}
+
+.about-modal-tab {
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+
+.about-modal-tab:hover {
+  color: var(--text-primary);
+}
+
+.about-modal-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-blue);
+}
+
+.about-modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tab-content h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tab-content h3 {
+  margin: 24px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Table of Contents */
+.toc {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toc-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.toc-list li {
+  margin: 0;
+  line-height: 1;
+}
+
+.toc-list li:not(:last-child)::after {
+  content: "·";
+  color: var(--text-secondary);
+  margin: 0 6px;
+}
+
+.toc-list button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toc-list button:hover {
+  text-decoration: underline;
+}
+
+.tab-content h3:first-of-type {
+  margin-top: 16px;
+}
+
+.tab-content h4 {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tab-content p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.tab-content ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.tab-content li {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.tab-content li strong {
+  color: var(--text-primary);
+}
+
+.tab-content strong {
+  color: var(--text-primary);
+}
+
+.tab-content a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.tab-content a:hover {
+  text-decoration: underline;
+}
+
+/* Risk Scoring Section */
+.risk-scoring-section {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.risk-scoring-section h3 {
+  margin-top: 0 !important;
+}
+
+.risk-formula {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 12px 0 16px;
+}
+
+.risk-tables {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.risk-table {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.risk-table h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.risk-table td {
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.risk-table td:last-child {
+  text-align: right;
+  font-family: monospace;
+  color: var(--text-primary);
+}
+
+.risk-table .risk-critical {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.risk-table .risk-high {
+  color: #da3633;
+  font-weight: 600;
+}
+
+.risk-table .risk-medium {
+  color: #d29922;
+  font-weight: 600;
+}
+
+.risk-table .risk-low {
+  color: #2f81f7;
+  font-weight: 600;
+}
+
+.risk-level-descriptions {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.risk-level-descriptions h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-level-descriptions table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.risk-level-descriptions td {
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+.risk-level-descriptions td:first-child {
+  width: 70px;
+  font-weight: 600;
+  padding-right: 12px;
+}
+
+.escalation-badge-example {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.zone-badge-example {
+  display: inline-block;
+  color: #52b3ff;
+  background: rgba(82, 179, 255, 0.15);
+  padding: 0 4px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.pathway-badge-example {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.boundary-badge-example {
+  display: inline-block;
+  font-size: 12px;
+  background: rgba(34, 197, 94, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+/* Risk Modifier Section */
+.risk-modifier-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.risk-modifier {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.risk-modifier-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.risk-modifier-header strong {
+  font-size: 14px;
+}
+
+.modifier-direction {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.modifier-direction.increases {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.modifier-direction.decreases {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.risk-modifier p {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.risk-modifier p:last-child {
+  margin-bottom: 0;
+}
+
+.modifier-example {
+  font-size: 12px !important;
+  color: var(--text-tertiary) !important;
+  font-style: italic;
+  background: var(--bg-secondary);
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-top: 8px !important;
+}
+
+/* Settings Info Section */
+.settings-info-section {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.settings-info-section h5 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-info-section h5:not(:first-child) {
+  margin-top: 16px;
+}
+
+.settings-info-section ul {
+  margin: 0 0 8px;
+}
+
+.settings-info-section li {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.settings-info-section p {
+  font-size: 13px;
+}
+
+/* Keyboard Shortcuts Styles */
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 20px;
+}
+
+.shortcuts-table td {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.shortcuts-table td:first-child {
+  width: 200px;
+  white-space: nowrap;
+}
+
+.shortcuts-table td:last-child {
+  color: var(--text-secondary);
+}
+
+.shortcuts-table tr:last-child td {
+  border-bottom: none;
+}
+
+kbd {
+  display: inline-block;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--border-color);
+}
+
+/* Contact Links */
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary) !important;
+  text-decoration: none !important;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.contact-link:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-blue);
+  text-decoration: none !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.contact-link svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.contact-link:hover svg {
+  color: var(--accent-blue);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .about-modal-overlay {
+    padding: 10px;
+  }
+
+  .about-modal {
+    max-height: 90vh;
+  }
+
+  .about-modal-tabs {
+    padding: 12px 12px 0;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .about-modal-tab {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .about-modal-content {
+    padding: 16px;
+  }
+
+  .tab-content h2 {
+    font-size: 18px;
+  }
+
+  .tab-content h3 {
+    font-size: 15px;
+  }
+
+  .risk-tables {
+    flex-direction: column;
+  }
+
+  .risk-scoring-section {
+    padding: 12px;
+  }
+
+  .shortcuts-table td:first-child {
+    width: auto;
+  }
+
+  .shortcuts-table td {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  kbd {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+
+  .contact-links {
+    flex-direction: column;
+  }
+
+  .contact-link {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}

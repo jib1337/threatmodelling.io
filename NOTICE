@@ -1,0 +1,34 @@
+ThreatModelling.io
+Copyright (c) 2026 Jack Nelson
+
+This application is licensed under the MIT License. See LICENSE.
+
+--------------------------------------------------------------------------------
+Bundled third-party content
+--------------------------------------------------------------------------------
+
+Threat Model Library
+
+  Builds of this application embed the technology and threat catalogue, which is
+  fetched at build time from a separate repository and is NOT covered by this
+  application's MIT licence.
+
+  Threat data from Threat Model Library
+  (https://github.com/jib1337/threat-model-library), © 2026 Jack Nelson, licensed
+  under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+
+  If you distribute a build of this application — hosting it publicly included —
+  you are redistributing that catalogue and the attribution above must remain
+  visible. The application shows it under About → Acknowledgements; if you fork
+  the UI, keep it there or somewhere equally reachable.
+
+MITRE ATT&CK®
+
+  The catalogue references technique identifiers, names and tactics from the
+  MITRE ATT&CK® knowledge base.
+
+  © 2026 The MITRE Corporation. This work is reproduced and distributed with the
+  permission of The MITRE Corporation.
+
+  ATT&CK® is a registered trademark of The MITRE Corporation.
+  https://attack.mitre.org

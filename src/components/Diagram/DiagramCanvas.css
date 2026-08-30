@@ -1,0 +1,398 @@
+.diagram-canvas {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  background: var(--bg-primary);
+}
+
+/* Drawing mode cursor */
+.diagram-canvas.drawing-mode {
+  cursor: crosshair;
+}
+
+.diagram-canvas.drawing-mode .react-flow__pane {
+  cursor: crosshair;
+}
+
+/* Drawing preview overlay */
+.drawing-preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drawing-preview-rect {
+  fill: rgba(128, 128, 128, 0.1);
+  stroke: var(--border-color);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+}
+
+.drawing-preview-rect.public {
+  fill: rgba(249, 115, 22, 0.1);
+  stroke: #f97316;
+}
+
+.drawing-preview-rect.private {
+  fill: rgba(82, 179, 255, 0.1);
+  stroke: #52b3ff;
+}
+
+.diagram-canvas .react-flow__background {
+  background: var(--bg-primary);
+}
+
+.diagram-canvas .react-flow__controls {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.diagram-canvas .react-flow__controls-button {
+  background: var(--bg-secondary);
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+}
+
+.diagram-canvas .react-flow__controls-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.diagram-canvas .react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+/* Snap to grid toggle button positioning */
+.diagram-canvas .react-flow__controls {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Use order to position snap toggle between zoom-out and fit-view */
+.diagram-canvas .react-flow__controls-button.react-flow__controls-zoomin {
+  order: 1;
+}
+
+.diagram-canvas .react-flow__controls-button.react-flow__controls-zoomout {
+  order: 2;
+}
+
+.diagram-canvas .snap-toggle-button {
+  order: 3;
+}
+
+.diagram-canvas .react-flow__controls-button.react-flow__controls-fitview {
+  order: 4;
+  border-top: 1px solid var(--border-color);
+}
+
+.diagram-canvas .react-flow__controls-button.react-flow__controls-interactive {
+  order: 5;
+}
+
+/* Snap toggle active state */
+.diagram-canvas .snap-toggle-button.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.diagram-canvas .snap-toggle-button.active:hover {
+  background: var(--bg-tertiary);
+}
+
+.diagram-canvas .snap-toggle-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Network Boundaries Toolbox Panel */
+.boundary-toolbox {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  padding-top: 8px;
+  min-width: 180px;
+}
+
+.toolbox-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.toolbox-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbox-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbox-button:hover {
+  background: var(--bg-primary);
+}
+
+.toolbox-button.boundary-public {
+  border-color: rgba(249, 115, 22, 0.4);
+}
+
+.toolbox-button.boundary-public:hover {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.toolbox-button.boundary-private {
+  border-color: rgba(82, 179, 255, 0.4);
+}
+
+.toolbox-button.boundary-private:hover {
+  border-color: #52b3ff;
+  background: rgba(82, 179, 255, 0.1);
+}
+
+.toolbox-icon {
+  font-size: 14px;
+}
+
+.toolbox-label {
+  flex: 1;
+}
+
+/* Active state when in drawing mode */
+.toolbox-button.boundary-public.active {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.2);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+}
+
+.toolbox-button.boundary-private.active {
+  border-color: #52b3ff;
+  background: rgba(82, 179, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(82, 179, 255, 0.3);
+}
+
+/* Helper text for drawing mode */
+.toolbox-hint {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toolbox-hint .hint-shortcut {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.diagram-canvas .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+/* Minimap container with hover-to-reveal behavior */
+.minimap-container {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 5;
+}
+
+.minimap-trigger {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.minimap-trigger:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+}
+
+.minimap-trigger.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* Override React Flow's minimap positioning when inside our container */
+.minimap-container .react-flow__minimap {
+  position: absolute !important;
+  bottom: 40px !important;
+  right: 0 !important;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.diagram-canvas .react-flow__edge-path {
+  stroke: var(--edge-color);
+  stroke-width: 2;
+}
+
+.diagram-canvas .react-flow__edge.selected .react-flow__edge-path,
+.diagram-canvas .react-flow__edge:focus .react-flow__edge-path,
+.diagram-canvas .react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--accent-blue);
+}
+
+.empty-canvas-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.empty-canvas-message p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.empty-canvas-message .hint {
+  font-size: 13px;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
+/* Export panel */
+.export-panel {
+  display: flex;
+  gap: 8px;
+}
+
+.export-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-button:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-blue);
+}
+
+.export-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile drawing mode indicator - hidden on desktop */
+.mobile-drawing-indicator {
+  display: none;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .diagram-canvas {
+    width: 100%;
+  }
+
+  .diagram-canvas .react-flow__controls {
+    left: 8px;
+  }
+
+  .empty-canvas-message p {
+    font-size: 14px;
+    padding: 0 16px;
+  }
+
+  .export-panel {
+    display: none;
+  }
+
+  .minimap-container {
+    display: none;
+  }
+
+  .boundary-toolbox {
+    display: none;
+  }
+
+  /* Mobile drawing mode indicator */
+  .mobile-drawing-indicator {
+    display: flex;
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 16px;
+    gap: 12px;
+    align-items: center;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .mobile-drawing-indicator span {
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  .mobile-drawing-indicator button {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mobile-drawing-indicator button:hover,
+  .mobile-drawing-indicator button:active {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+  }
+}
