@@ -1,0 +1,60 @@
+appId: io.threatmodelling.app
+productName: ThreatModelling.io
+copyright: Copyright © ThreatModelling.io
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - build/icon.png
+  - package.json
+  - '!node_modules/**/*'
+
+asar: true
+npmRebuild: false
+artifactName: ThreatModellingIO-${version}-${os}-${arch}.${ext}
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  category: Development
+  maintainer: jib1337 <threatmodelling.io@gmail.com>
+  executableName: threatmodelling-io
+  synopsis: Create cyber security threat models visually
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
