@@ -1,0 +1,201 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Increment type
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      version:
+        description: Exact version (overrides bump)
+        type: string
+        required: false
+      publish:
+        description: Create the GitHub release (uncheck to build installers only)
+        type: boolean
+        default: true
+      prerelease:
+        description: Mark the release as a prerelease
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: resolve
+        run: |
+          explicit="${{ inputs.version }}"
+          if [ -n "$explicit" ]; then
+            version="${explicit#v}"
+          else
+            latest="$(git ls-remote --tags --refs origin 'v*' \
+              | awk -F/ '{print $NF}' | sort -V | tail -1)"
+            if [ -z "$latest" ]; then
+              # First release. package.json is not the seed — it holds a 0.0.0
+              # placeholder so locally built installers are obviously not
+              # releases, and the runner overwrites it before packaging.
+              version="1.0.0"
+            else
+              version="$(node -e '
+                const [maj, min, pat] = process.argv[1].replace(/^v/, "").split(".").map(Number);
+                const bump = process.argv[2];
+                console.log(
+                  bump === "major" ? [maj + 1, 0, 0].join(".")
+                  : bump === "minor" ? [maj, min + 1, 0].join(".")
+                  : [maj, min, pat + 1].join(".")
+                );
+              ' "$latest" "${{ inputs.bump }}")"
+            fi
+          fi
+
+          case "$version" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Resolved version '$version' is not x.y.z" >&2; exit 1 ;;
+          esac
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing **$version** from \`${GITHUB_REF_NAME}\` (previous tag: ${latest:-none})" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag must be free
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.resolve.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists — pick a different bump or version." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists — pick a different bump or version." >&2
+            exit 1
+          fi
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS
+            platform: --mac
+          - os: windows-latest
+            name: Windows
+            platform: --win
+          - os: ubuntu-latest
+            name: Linux
+            platform: --linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Stamp version
+        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Build web bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build
+
+      - name: Package
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder ${{ matrix.platform }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.name }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.blockmap
+
+  release:
+    name: Publish release
+    needs: [prepare, build]
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: installers-*
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum * > ../CHECKSUMS.txt && mv ../CHECKSUMS.txt .
+
+      - name: Write release notes
+        run: |
+          cat > notes.md <<'NOTES'
+          Desktop builds of ThreatModelling.io.
+
+          | Platform | Download |
+          |---|---|
+          | macOS (Apple silicon) | `*-mac-arm64.dmg` |
+          | macOS (Intel) | `*-mac-x64.dmg` |
+          | Windows | `*-win-x64.exe` |
+          | Linux | `*-linux-x86_64.AppImage` or `*-linux-amd64.deb` |
+
+          These builds are **not code signed**. macOS reports unsigned apps as
+          damaged or from an unidentified developer. Clear the quarantine
+          attribute to run it:
+
+          ```
+          xattr -dr com.apple.quarantine "/Applications/ThreatModelling.io.app"
+          ```
+
+          Windows SmartScreen warns on first run. Choose More info -> Run anyway.
+
+          Verify downloads against `CHECKSUMS.txt`.
+          NOTES
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          flags=()
+          if [ "${{ inputs.prerelease }}" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "ThreatModelling.io $TAG" \
+            --notes-file notes.md \
+            "${flags[@]}" \
+            artifacts/*
+          echo "Published $TAG" >> "$GITHUB_STEP_SUMMARY"

@@ -4,12 +4,11 @@ An interactive web application for creating cyber security threat models.
 
 ## Getting Started
 
-### Prerequisites
+### Desktop App
 
-- Node.js 18+
-- npm or yarn
+The desktop app runs entirely offline. Grab the latest Windows/Linux/Mac binary from the releases.
 
-### Installation
+### Running from Repository
 
 ```bash
 # Clone the repository
@@ -27,25 +26,22 @@ The application will be available at `http://localhost:5173`
 
 The technology and threat catalogue is downloaded automatically on first run from the [threat-model-library](https://github.com/jib1337/threat-model-library) releases.
 
-### Build for Production
+#### Running Desktop App
+
+```bash
+npm run electron:dev      # Vite dev server + Electron shell, with HMR
+npm run electron:start    # build, then run the shell against dist/
+npm run package           # installers for the current platform, into release/
+npm run package:mac       # or :win / :linux
+```
+
+#### Build for Production
 
 ```bash
 npm run build
 ```
 
-## Usage
-
-1. **Add Technologies**: Drag technologies from the right palette onto the canvas, or double-click to add them
-2. **Create Connections**: Click and drag from one node's handle to another to create connections
-3. **Label Connections**: Double-click on a connection line to add a data flow label
-4. **View Threats**: The left sidebar automatically displays relevant threats based on your diagram
-5. **Expand Threats**: Click on a threat to see STRIDE tags, MITRE techniques, and controls
-6. **Track Mitigations**: Tick the checkbox next to a control once you've implemented it
-7. **Export**: Use the toolbar buttons to export your model as JSON, PNG, SVG, Markdown, PDF, or threatcl HCL
-
----
-
-### Working against an unreleased catalogue
+#### Working Against an Unreleased Catalogue
 
 Point the app at a local build of the library:
 
@@ -57,7 +53,7 @@ npm run build
 LIBRARY_PATH=../threat-model-library/dist/library npm run dev
 ```
 
-### Pinning a version
+#### Pinning a Catalogue Version
 
 Builds take the latest catalogue release by default. To pin one:
 
@@ -72,7 +68,14 @@ fetch script verifies on download:
 { "version": "1.2.0", "sha256": "9f2c…" }
 ```
 
----
+## Usage
+
+1. **Add Technologies**: Add technologies to the canvas to build your model
+2. **Create Connections**: Connect your technologies to create context
+3. **View Threats**: The left sidebar automatically displays relevant threats based on your diagram
+4. **Expand Threats**: Click on a threat to see STRIDE tags, MITRE techniques, and controls
+5. **Track Mitigations**: Tick the checkbox next to a control once you've implemented it
+6. **Export**: Use the toolbar buttons to export your model in various formats
 
 ## Architecture
 
@@ -95,12 +98,6 @@ fetch script verifies on download:
 | `src/components/Diagram/DiagramCanvas.tsx` | Main diagram component |
 | `src/components/Sidebar/ThreatSidebar.tsx` | Threat display panel |
 | `src/components/TechPalette/TechPalette.tsx` | Technology selection panel |
-
----
-
-## Testing
-
-The application includes a test suite using [Vitest](https://vitest.dev/).
 
 ## Contributing
 

@@ -5,8 +5,7 @@ node_modules
 dist
 dist-ssr
 
-# Technology & threat catalogue — fetched at build time from its own repository,
-# never committed here. See scripts/fetch-library.mjs.
+# Technology & threat catalogue
 src/data/library
 src/data/library.staging
 
@@ -42,3 +41,6 @@ helpers
 
 # Local Claude Code settings
 .claude/settings.local.json
+
+# Electron packaging output
+release

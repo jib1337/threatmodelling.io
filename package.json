@@ -1,8 +1,9 @@
 {
   "name": "threatmodelling.io",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "predev": "node scripts/fetch-library.mjs",
     "dev": "vite",
@@ -16,7 +17,19 @@
     "test:run": "vitest run",
     "pretest:coverage": "node scripts/fetch-library.mjs",
     "test:coverage": "vitest run --coverage",
-    "library": "node scripts/fetch-library.mjs"
+    "library": "node scripts/fetch-library.mjs",
+    "preelectron:dev": "node scripts/fetch-library.mjs",
+    "electron:dev": "node scripts/electron-dev.mjs",
+    "electron:start": "npm run build && electron .",
+    "prepackage": "npm run build",
+    "package": "electron-builder --publish never",
+    "package:dir": "electron-builder --dir --publish never",
+    "prepackage:mac": "npm run build",
+    "package:mac": "electron-builder --mac --publish never",
+    "prepackage:win": "npm run build",
+    "package:win": "electron-builder --win --publish never",
+    "prepackage:linux": "npm run build",
+    "package:linux": "electron-builder --linux --publish never"
   },
   "dependencies": {
     "@xyflow/react": "^12.3.6",
@@ -38,6 +51,8 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^3.2.4",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
@@ -49,5 +64,6 @@
     "vitest": "^3.2.4"
   },
   "description": "Create cyber security threat models by dragging cloud technologies onto a canvas",
+  "author": "jib1337",
   "license": "MIT"
 }
