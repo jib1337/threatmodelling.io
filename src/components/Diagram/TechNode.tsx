@@ -4,24 +4,28 @@ import type { TechNodeData, DataSensitivity } from '../../data/schema';
 import { PROVIDER_LABELS, DATA_SENSITIVITY_LABELS } from '../../data/schema';
 import { useActions } from '../../context/ThreatModelContext';
 import { isActor } from '../../data';
+import { Globe, Building2, Lock, Ban, type LucideIcon } from 'lucide-react';
 import ProviderIcon from '../ProviderIcon';
 import ActorIcon from '../ActorIcon';
 import './TechNode.css';
 
 type TechNodeType = Node<TechNodeData>;
 
-const SENSITIVITY_ICONS: Record<DataSensitivity, string> = {
-  'public': '🌐',
-  'internal': '🏢',
-  'confidential': '🔒',
-  'restricted': '⛔',
+const SENSITIVITY_ICONS: Record<DataSensitivity, LucideIcon> = {
+  'public': Globe,
+  'internal': Building2,
+  'confidential': Lock,
+  'restricted': Ban,
 };
+
+const SENSITIVITY_ICON_SIZE = 14;
 
 function TechNode({ id, data, selected }: NodeProps<TechNodeType>) {
   const { removeNode } = useActions();
   const { technology, sensitivity, customName } = data;
   const displayName = customName || technology.name;
   const isActorNode = isActor(technology.id);
+  const SensitivityIcon = SENSITIVITY_ICONS[sensitivity];
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,7 +52,7 @@ function TechNode({ id, data, selected }: NodeProps<TechNodeType>) {
         className={`sensitivity-indicator sensitivity-${sensitivity}`}
         title={`Data Sensitivity: ${DATA_SENSITIVITY_LABELS[sensitivity]}`}
       >
-        {SENSITIVITY_ICONS[sensitivity]}
+        <SensitivityIcon size={SENSITIVITY_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
       </div>
 
       <button

@@ -4,9 +4,9 @@ node_modules
 # Build output
 dist
 dist-ssr
+release
 
-# Technology & threat catalogue — fetched at build time from its own repository,
-# never committed here. See scripts/fetch-library.mjs.
+# Technology & threat catalogue
 src/data/library
 src/data/library.staging
 
