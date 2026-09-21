@@ -60,9 +60,12 @@ export default memo(function TechPalette() {
     });
   }, []);
 
-  // Eagerly preload all providers after mount so data is ready before user interaction
+  // On desktop, eagerly preload all providers after mount so data is ready before user interaction.
+  // Mobile already preloads when the technologies panel opens (see activePanel effect above).
   useEffect(() => {
-    preloadAllProviders();
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+      preloadAllProviders();
+    }
   }, []);
 
   // On mobile, preload all providers the moment the technologies panel opens.
