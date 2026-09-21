@@ -109,6 +109,15 @@ export function loadProviders(providers: CloudProvider[]): Promise<void> {
   return Promise.all(providers.map(loadProvider)).then(() => undefined);
 }
 
+export function preloadAllProviders(): void {
+  const all = LIBRARY_MANIFEST.providers.map(p => p.id);
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => loadProviders(all));
+  } else {
+    setTimeout(() => loadProviders(all), 100);
+  }
+}
+
 // Export all technologies grouped by provider (returns cached Map)
 export function getTechnologiesByProvider(): Map<CloudProvider, Technology[]> {
   return technologiesByProviderCache;
