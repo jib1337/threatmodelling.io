@@ -7,6 +7,7 @@ import {
   loadProvider,
   loadProviders,
   subscribeToProviderLoad,
+  preloadAllProviders,
   PROVIDER_SERVICE_COUNTS,
 } from '../../data';
 import { useActions, useCustomTechnologies } from '../../context/ThreatModelContext';
@@ -57,6 +58,14 @@ export default memo(function TechPalette() {
         return next;
       });
     });
+  }, []);
+
+  // On desktop, eagerly preload all providers after mount so data is ready before user interaction.
+  // Mobile already preloads when the technologies panel opens (see activePanel effect above).
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+      preloadAllProviders();
+    }
   }, []);
 
   // On mobile, preload all providers the moment the technologies panel opens.
@@ -270,6 +279,13 @@ export default memo(function TechPalette() {
                   ▶
                 </span>
               </button>
+
+              {isExpanded && !isLoaded && (
+                <div className="tech-list-loading">
+                  <span className="loading-spinner" />
+                  Loading…
+                </div>
+              )}
 
               {isExpanded && isLoaded && technologies && technologies.length > 0 && (
                 <div className="tech-list">
