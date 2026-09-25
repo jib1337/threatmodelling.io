@@ -12,6 +12,7 @@ import {
 } from '../../data';
 import { useActions, useCustomTechnologies } from '../../context/ThreatModelContext';
 import { useMobilePanel } from '../App';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { Box, Plus, SquareUserRound } from 'lucide-react';
 import ProviderIcon from '../ProviderIcon';
 import ActorIcon from '../ActorIcon';
@@ -27,7 +28,8 @@ const ACTOR_PROVIDER = 'actor' as CloudProvider;
 export default memo(function TechPalette() {
   const { addNode, getViewportCenter } = useActions();
   const { customTechnologies, registerCustomTechnology, removeCustomTechnology } = useCustomTechnologies();
-  const { activePanel } = useMobilePanel();
+  const { activePanel, setActivePanel } = useMobilePanel();
+  const isMobile = useIsMobile();
   const [expandedProviders, setExpandedProviders] = useState<Set<CloudProvider>>(
     new Set()
   );
@@ -61,12 +63,13 @@ export default memo(function TechPalette() {
   }, []);
 
   // On desktop, eagerly preload all providers after mount so data is ready before user interaction.
-  // Mobile already preloads when the technologies panel opens (see activePanel effect above).
+  // Mobile already preloads when the technologies panel opens (see activePanel effect below).
+  // Re-runs if a mobile-width window is widened to desktop; loadProvider dedupes repeat calls.
   useEffect(() => {
-    if (!window.matchMedia('(max-width: 768px)').matches) {
+    if (!isMobile) {
       preloadAllProviders();
     }
-  }, []);
+  }, [isMobile]);
 
   // On mobile, preload all providers the moment the technologies panel opens.
   // This runs during the panel open animation, so data is ready before the user taps anything.
@@ -174,7 +177,7 @@ export default memo(function TechPalette() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const onDoubleClick = (technology: Technology) => {
+  const addToViewportCenter = (technology: Technology) => {
     // Place node at the current viewport center (with slight randomization to avoid stacking)
     const center = getViewportCenter();
     const randomOffset = () => Math.random() * 100 - 50; // -50 to +50
@@ -183,6 +186,18 @@ export default memo(function TechPalette() {
       y: (center?.y ?? 200) + randomOffset(),
     };
     addNode(technology, position);
+  };
+
+  const onDoubleClick = (technology: Technology) => {
+    // On mobile the first tap has already added the node (and closed the drawer)
+    if (!isMobile) addToViewportCenter(technology);
+  };
+
+  // HTML5 drag-and-drop doesn't work from the touch drawer, so on mobile a tap adds the item
+  const onItemClick = (technology: Technology) => {
+    if (!isMobile) return;
+    addToViewportCenter(technology);
+    setActivePanel(null); // Close the drawer so the new node is visible
   };
 
   const handleDeleteCustomTech = useCallback((e: React.MouseEvent, tech: Technology) => {
@@ -234,6 +249,7 @@ export default memo(function TechPalette() {
                     className="tech-item actor-item"
                     draggable
                     onDragStart={e => onDragStart(e, actor)}
+                    onClick={() => onItemClick(actor)}
                     onDoubleClick={() => onDoubleClick(actor)}
                     title="Drag to canvas or double-click to add"
                   >
@@ -266,7 +282,6 @@ export default memo(function TechPalette() {
                 className={`provider-header provider-${provider}`}
                 onClick={() => handleProviderClick(provider)}
                 onMouseEnter={() => handleProviderMouseEnter(provider)}
-                onTouchStart={() => handleProviderMouseEnter(provider)}
               >
                 <span className="provider-icon">
                   <ProviderIcon provider={provider} size="small" />
@@ -295,6 +310,7 @@ export default memo(function TechPalette() {
                       className="tech-item"
                       draggable
                       onDragStart={e => onDragStart(e, tech)}
+                      onClick={() => onItemClick(tech)}
                       onDoubleClick={() => onDoubleClick(tech)}
                       title="Drag to canvas or double-click to add"
                     >
@@ -342,6 +358,7 @@ export default memo(function TechPalette() {
                     className="tech-item custom-tech-item"
                     draggable
                     onDragStart={e => onDragStart(e, tech)}
+                    onClick={() => onItemClick(tech)}
                     onDoubleClick={() => onDoubleClick(tech)}
                     title="Drag to canvas or double-click to add"
                   >
