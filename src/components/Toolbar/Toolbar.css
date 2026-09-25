@@ -283,6 +283,21 @@
     display: none;
   }
 
+  /* .toolbar-right scrolls horizontally, which clips an absolutely positioned
+     menu. Fixing it to the viewport lets it escape that overflow. */
+  .export-dropdown.mobile-only .export-dropdown-menu {
+    position: fixed;
+    top: 60px;
+    right: 8px;
+    min-width: 200px;
+    z-index: 200;
+  }
+
+  .export-dropdown.mobile-only .export-dropdown-menu button {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
   .toolbar-button {
     padding: 8px;
     gap: 4px;

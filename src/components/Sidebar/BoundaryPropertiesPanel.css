@@ -297,7 +297,7 @@
     top: auto;
     bottom: 0;
     height: auto;
-    max-height: 50vh;
+    max-height: 50dvh;
     border-left: none;
     border-top: 1px solid var(--border-color);
     border-radius: 12px 12px 0 0;

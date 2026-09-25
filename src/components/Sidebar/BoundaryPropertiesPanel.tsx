@@ -1,5 +1,6 @@
 import { useSelection, useActions } from '../../context/ThreatModelContext';
 import { NETWORK_ZONE_LABELS, ZONE_NETWORK_TYPE_LABELS, type ZoneNetworkType } from '../../data/schema';
+import PropertiesSheet from './PropertiesSheet';
 import './BoundaryPropertiesPanel.css';
 
 export default function BoundaryPropertiesPanel() {
@@ -48,17 +49,11 @@ export default function BoundaryPropertiesPanel() {
   };
 
   return (
-    <div className="boundary-properties-panel">
-      <div className="panel-header">
-        <h3>Properties</h3>
-        <button
-          className="close-button"
-          onClick={deselectAll}
-          title="Close panel"
-        >
-          &times;
-        </button>
-      </div>
+    <PropertiesSheet
+      className="boundary-properties-panel"
+      subtitle={customName || label}
+      onClose={deselectAll}
+    >
 
       <div className="panel-content">
         <div className="property-section">
@@ -166,6 +161,6 @@ export default function BoundaryPropertiesPanel() {
           </button>
         </div>
       </div>
-    </div>
+    </PropertiesSheet>
   );
 }

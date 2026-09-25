@@ -162,6 +162,16 @@
   right: 0;
 }
 
+/* On touch screens, enlarge each handle's hit area without changing how it looks.  */
+@media (pointer: coarse) {
+  .tech-node .react-flow__handle::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+  }
+}
+
 /* Sensitivity indicator */
 .sensitivity-indicator {
   position: absolute;
