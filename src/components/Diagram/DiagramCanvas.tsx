@@ -22,6 +22,7 @@ import '@xyflow/react/dist/style.css';
 
 import { useDiagramState, useSelection, useActions, useDrawing } from '../../context/ThreatModelContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useMediaQuery } from '../../hooks/useIsMobile';
 import { getTechnologyById } from '../../data';
 import type { TechNodeData, ZoneNodeData } from '../../data/schema';
 import TechNode from './TechNode';
@@ -57,6 +58,8 @@ export default function DiagramCanvas() {
   const { addNode, updateEdgeLabel, removeEdge, setCenterCallback, setGetViewportCenterCallback, setFitViewCallback, addBoundary, assignNodeToBoundary, saveHistory } = useActions();
   const { drawingZoneType, isDrawing, startDrawingPublicZone, startDrawingPrivateZone, cancelDrawingMode } = useDrawing();
   const { theme } = useTheme();
+  // Allow less precise pointer interactions on mobile devices (e.g., larger connection radius for touch)
+  const isCoarsePointer = useMediaQuery('(pointer: coarse)');
   // Must match --edge-color in theme.css so edge strokes and arrow markers agree
   const edgeColor = useMemo(() => theme === 'light' ? '#5b6672' : '#30363d', [theme]);
 
@@ -683,7 +686,7 @@ export default function DiagramCanvas() {
 
   return (
     <div
-      className={`diagram-canvas ${isDrawing ? 'drawing-mode' : ''}`}
+      className={`diagram-canvas ${isDrawing ? 'drawing-mode' : ''} ${selectedNodeId || selectedBoundaryId ? 'has-properties-sheet' : ''}`}
       ref={reactFlowWrapper}
       onMouseDown={isDrawing ? handleDrawingMouseDown : undefined}
       onMouseMove={isDrawing ? handleDrawingMouseMove : undefined}
@@ -701,6 +704,7 @@ export default function DiagramCanvas() {
         onConnectStart={handleConnectStart}
         onConnect={handleConnect}
         connectionMode={ConnectionMode.Loose}
+        connectionRadius={isCoarsePointer ? 40 : 20}
         onInit={onInit}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -851,8 +855,9 @@ export default function DiagramCanvas() {
 
       {nodes.length === 0 && boundaries.length === 0 && (
         <div className="empty-canvas-message">
-          <p>Drag technologies from the palette to start modelling</p>
-          <p className="hint">Press ? for keyboard shortcuts</p>
+          <p className="desktop-hint">Drag technologies from the palette to start modelling</p>
+          <p className="mobile-hint">Tap + to add technologies and start modelling</p>
+          <p className="hint desktop-hint">Press ? for keyboard shortcuts</p>
         </div>
       )}
     </div>

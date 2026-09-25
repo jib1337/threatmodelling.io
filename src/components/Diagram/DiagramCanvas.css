@@ -294,6 +294,11 @@
   opacity: 0.7;
 }
 
+/* Swapped for .desktop-hint in the mobile media query */
+.empty-canvas-message .mobile-hint {
+  display: none;
+}
+
 /* Export panel */
 .export-panel {
   display: flex;
@@ -339,9 +344,26 @@
     left: 8px;
   }
 
+  /* Keep the zoom controls and drawing prompt above the collapsed properties sheet */
+  .diagram-canvas.has-properties-sheet .react-flow__controls {
+    bottom: calc(var(--sheet-peek-height) + 8px);
+  }
+
+  .diagram-canvas.has-properties-sheet .mobile-drawing-indicator {
+    bottom: calc(var(--sheet-peek-height) + 16px);
+  }
+
   .empty-canvas-message p {
     font-size: 14px;
     padding: 0 16px;
+  }
+
+  .empty-canvas-message .desktop-hint {
+    display: none;
+  }
+
+  .empty-canvas-message .mobile-hint {
+    display: block;
   }
 
   .export-panel {
