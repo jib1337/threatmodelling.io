@@ -1,0 +1,99 @@
+:root {
+  /* Height of the collapsed mobile sheet; DiagramCanvas.css lifts the zoom controls clear of it */
+  --sheet-peek-height: 64px;
+}
+
+/* Wraps the panel's content so it still fills and scrolls inside the flex column */
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The .properties-sheet class is only applied by PropertiesSheet in the mobile
+   layout; the base bottom-sheet position lives in each panel's own mobile block.
+   Selectors repeat the class to outrank the panels' own rules regardless of load order. */
+.properties-sheet.properties-sheet {
+  max-height: 50dvh;
+  transition: transform 0.25s ease;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.properties-sheet.collapsed {
+  transform: translateY(calc(100% - var(--sheet-peek-height)));
+}
+
+.properties-sheet.dragging {
+  transition: none;
+}
+
+.properties-sheet.properties-sheet .panel-header {
+  height: var(--sheet-peek-height);
+  box-sizing: border-box;
+  padding: 0 8px 0 0;
+  gap: 4px;
+  flex-shrink: 0;
+  /* The header is the drag handle: stop the browser scrolling or pull-to-refreshing */
+  touch-action: none;
+  user-select: none;
+}
+
+.sheet-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 10px 8px 0 16px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: grab;
+}
+
+.sheet-grabber {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-color);
+}
+
+.sheet-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.25s ease;
+}
+
+.properties-sheet.expanded .sheet-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .properties-sheet.properties-sheet,
+  .sheet-chevron {
+    transition: none;
+  }
+}
