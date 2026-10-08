@@ -2,7 +2,7 @@ import type { Threat, ActiveThreat, DataSensitivity, Technology, ConnectionMitig
 import { NETWORK_ZONE_LABELS, ZONE_NETWORK_TYPE_LABELS, DEFAULT_PATHWAY_MITIGATION_SETTINGS } from '../data/schema';
 import { getThreatsForTechnology, getTechnologyById, getConnectionThreats, getZoneThreats } from '../data';
 import { calculateRiskScore, getRiskLevel, getHigherSensitivity, getMaxDownstreamSensitivity, applyBoundaryMultiplier, getBoundaryMultiplier, type BoundaryRiskData } from './riskCalculator';
-import { precomputeUpstreamMitigations, checkPathwayMitigation, applyPathwayReduction, type UpstreamMitigation } from './pathwayMitigations';
+import { precomputeUpstreamMitigations, checkPathwayMitigation, applyPathwayReduction, getTechnologyMitigationsWithSource, type UpstreamMitigation } from './pathwayMitigations';
 
 export interface DiagramNode {
   id: string;
@@ -250,9 +250,12 @@ export function resolveActiveThreats(
         }
       }
 
-      // For connection threats, use the source node's upstream mitigations
-      // (the source node is the one sending data through the connection)
-      const sourceUpstreamMitigations = nodeUpstreamMitigations.get(edge.source) || [];
+      const sourceUpstreamMitigations = pathwayMitigationSettings.enabled && sourceTech
+        ? [
+            ...getTechnologyMitigationsWithSource(sourceTech.id),
+            ...(nodeUpstreamMitigations.get(edge.source) || []),
+          ]
+        : [];
 
       connectionThreats.forEach(threat => {
         const key = `${threat.id}-${edge.id}`;

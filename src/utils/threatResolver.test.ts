@@ -463,6 +463,69 @@ describe('resolveActiveThreats', () => {
     expect(threat?.pathwayMitigatedBy?.mode).toBe('reduce');
     expect(threat?.pathwayMitigatedBy?.mitigatingTechId).toBe('aws-cloudfront');
   });
+
+  it('mitigates connection threats on an edge whose source node provides the mitigation', () => {
+    const cdnTech = makeTech({ id: 'aws-cloudfront', name: 'CloudFront' });
+    const appTech = makeTech({ id: 'aws-ec2' });
+    vi.mocked(getTechnologyById).mockImplementation(id =>
+      id === 'aws-cloudfront' ? cdnTech : appTech,
+    );
+    vi.mocked(getThreatsForTechnology).mockReturnValue([]);
+    vi.mocked(getConnectionThreats).mockReturnValue([
+      makeThreat({ id: 'connection-dos', severity: 'high' }),
+    ]);
+
+    const settings: PathwayMitigationSettings = {
+      enabled: true,
+      mitigations: {
+        'ddos-protection': { enabled: true, mode: 'reduce', reductionPercent: 50 },
+        'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
+        'rate-limiting': { enabled: false, mode: 'reduce', reductionPercent: 30 },
+        'network-firewall': { enabled: false, mode: 'reduce', reductionPercent: 40 },
+      },
+    };
+    const result = resolveActiveThreats(
+      [makeNode('n-cdn', 'aws-cloudfront', 'restricted'), makeNode('n-app', 'aws-ec2', 'restricted')],
+      [makeEdge('e1', 'n-cdn', 'n-app')],
+      [],
+      settings,
+    );
+    const threat = result.find(r => r.threat.id === 'connection-dos');
+    // high (3) × restricted (4) = 12, reduced by 50% → 6
+    expect(threat?.riskScore).toBe(6);
+    expect(threat?.pathwayMitigatedBy?.mitigatingTechId).toBe('aws-cloudfront');
+  });
+
+  it('does not mitigate connection threats on an edge whose target provides the mitigation', () => {
+    const cdnTech = makeTech({ id: 'aws-cloudfront', name: 'CloudFront' });
+    const appTech = makeTech({ id: 'aws-ec2' });
+    vi.mocked(getTechnologyById).mockImplementation(id =>
+      id === 'aws-cloudfront' ? cdnTech : appTech,
+    );
+    vi.mocked(getThreatsForTechnology).mockReturnValue([]);
+    vi.mocked(getConnectionThreats).mockReturnValue([
+      makeThreat({ id: 'connection-dos', severity: 'high' }),
+    ]);
+
+    const settings: PathwayMitigationSettings = {
+      enabled: true,
+      mitigations: {
+        'ddos-protection': { enabled: true, mode: 'remove', reductionPercent: 50 },
+        'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
+        'rate-limiting': { enabled: false, mode: 'reduce', reductionPercent: 30 },
+        'network-firewall': { enabled: false, mode: 'reduce', reductionPercent: 40 },
+      },
+    };
+    const result = resolveActiveThreats(
+      [makeNode('n-app', 'aws-ec2', 'restricted'), makeNode('n-cdn', 'aws-cloudfront', 'restricted')],
+      [makeEdge('e1', 'n-app', 'n-cdn')],
+      [],
+      settings,
+    );
+    const threat = result.find(r => r.threat.id === 'connection-dos');
+    expect(threat).toBeDefined();
+    expect(threat?.pathwayMitigatedBy).toBeUndefined();
+  });
 });
 
 describe('groupThreatsByTechnology', () => {

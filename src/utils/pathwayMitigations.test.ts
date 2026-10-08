@@ -253,19 +253,60 @@ describe('checkPathwayMitigation', () => {
     expect(checkPathwayMitigation('injection-attack', upstream, settings).isMitigated).toBe(false);
   });
 
-  it('uses the first matching mitigation when multiple upstream mitigations could apply', () => {
+  it('picks the larger reduction when multiple upstream mitigations could apply, regardless of order', () => {
     const settings = buildSettings({
       'ddos-protection': { mode: 'reduce', reductionPercent: 50 },
       'rate-limiting': { mode: 'reduce', reductionPercent: 30 },
     });
-    // Both mitigate dos-attack. The implementation walks the upstream list in
-    // order and returns on the first hit — here, ddos-protection wins.
+    // Both mitigate dos-attack. The weaker one is encountered first (nearer
+    // upstream) but the stronger one must still win.
+    const upstream: UpstreamMitigation[] = [
+      { mitigationType: 'rate-limiting', techId: 'aws-api-gateway', techName: 'API Gateway' },
+      { mitigationType: 'ddos-protection', techId: 'aws-cloudfront', techName: 'CloudFront' },
+    ];
+    const result = checkPathwayMitigation('dos-attack', upstream, settings);
+    expect(result.mitigationType).toBe('ddos-protection');
+    expect(result.mitigatingTechId).toBe('aws-cloudfront');
+    expect(result.reductionPercent).toBe(50);
+  });
+
+  it('prefers a remove-mode mitigation over any reduce-mode mitigation', () => {
+    const settings = buildSettings({
+      'ddos-protection': { mode: 'remove' },
+      'rate-limiting': { mode: 'reduce', reductionPercent: 90 },
+    });
+    const upstream: UpstreamMitigation[] = [
+      { mitigationType: 'rate-limiting', techId: 'aws-api-gateway', techName: 'API Gateway' },
+      { mitigationType: 'ddos-protection', techId: 'aws-cloudfront', techName: 'CloudFront' },
+    ];
+    const result = checkPathwayMitigation('dos-attack', upstream, settings);
+    expect(result.mode).toBe('remove');
+    expect(result.mitigationType).toBe('ddos-protection');
+  });
+
+  it('keeps the earliest match when reductions tie', () => {
+    const settings = buildSettings({
+      'ddos-protection': { mode: 'reduce', reductionPercent: 40 },
+      'rate-limiting': { mode: 'reduce', reductionPercent: 40 },
+    });
+    const upstream: UpstreamMitigation[] = [
+      { mitigationType: 'rate-limiting', techId: 'aws-api-gateway', techName: 'API Gateway' },
+      { mitigationType: 'ddos-protection', techId: 'aws-cloudfront', techName: 'CloudFront' },
+    ];
+    expect(checkPathwayMitigation('dos-attack', upstream, settings).mitigationType).toBe('rate-limiting');
+  });
+
+  it('ignores a stronger mitigation that is disabled', () => {
+    const settings = buildSettings({
+      'rate-limiting': { mode: 'reduce', reductionPercent: 30 },
+    });
     const upstream: UpstreamMitigation[] = [
       { mitigationType: 'ddos-protection', techId: 'aws-cloudfront', techName: 'CloudFront' },
       { mitigationType: 'rate-limiting', techId: 'aws-api-gateway', techName: 'API Gateway' },
     ];
     const result = checkPathwayMitigation('dos-attack', upstream, settings);
-    expect(result.mitigationType).toBe('ddos-protection');
+    expect(result.mitigationType).toBe('rate-limiting');
+    expect(result.reductionPercent).toBe(30);
   });
 });
 
