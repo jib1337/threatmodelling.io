@@ -23,7 +23,7 @@ import {
 } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import type { Technology, ThreatModel, ActiveThreat, TechNodeData, ZoneNodeData, DataSensitivity, NetworkZone, ZoneNetworkType, ClipboardState, ClipboardNode, ClipboardEdge, ClipboardZone, PathwayMitigationSettings, ThreatSeverity, CloudProvider } from '../data/schema';
-import { NETWORK_ZONE_LABELS, DEFAULT_PATHWAY_MITIGATION_SETTINGS } from '../data/schema';
+import { NETWORK_ZONE_LABELS, DEFAULT_PATHWAY_MITIGATION_SETTINGS, normalizePathwayMitigationSettings } from '../data/schema';
 import { resolveActiveThreats } from '../utils/threatResolver';
 import { getTechnologyById, registerCustomTechnology as registerCustomTechInCache, unregisterCustomTechnology as unregisterCustomTechInCache, registerCustomTechnologies as registerCustomTechsInCache, clearCustomTechnologies as clearCustomTechsInCache, loadProviders, providerFromTechId } from '../data';
 import { findBoundaryAtPosition, getNodeCenterPosition, calculateRelativePosition, calculateAbsolutePosition } from '../utils/boundaryUtils';
@@ -307,8 +307,9 @@ function threatModelReducer(
         data: { label: ee.label || '' },
       }));
 
-      // Load pathway mitigation settings from import, or use defaults (feature OFF) for older versions
-      const pathwayMitigationSettings = importedSettings ?? DEFAULT_PATHWAY_MITIGATION_SETTINGS;
+      // Load pathway mitigation settings from import, reconciled with the current catalogue's
+      // mitigation types; older versions without the field get the defaults (feature OFF)
+      const pathwayMitigationSettings = normalizePathwayMitigationSettings(importedSettings);
 
       return {
         ...state,

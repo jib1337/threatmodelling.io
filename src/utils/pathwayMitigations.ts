@@ -77,6 +77,21 @@ export function findUpstreamNodes(
 }
 
 /**
+ * Get the mitigation capabilities a single technology provides, tagged with
+ * that technology as their source.
+ *
+ * @param techId The technology to look up
+ * @returns The technology's mitigations, or an empty array if it provides none
+ */
+export function getTechnologyMitigationsWithSource(techId: string): UpstreamMitigation[] {
+  const techMitigations = getTechnologyMitigations(techId);
+  if (techMitigations.length === 0) return [];
+
+  const techName = getTechnologyById(techId)?.name || techId;
+  return techMitigations.map(mitigationType => ({ mitigationType, techId, techName }));
+}
+
+/**
  * Get all mitigation capabilities from upstream nodes.
  *
  * @param nodeId The target node to check
@@ -95,20 +110,7 @@ export function getUpstreamMitigations(
   for (const upstreamNodeId of upstreamNodeIds) {
     const techId = nodeToTechId.get(upstreamNodeId);
     if (!techId) continue;
-
-    const techMitigations = getTechnologyMitigations(techId);
-    if (techMitigations.length === 0) continue;
-
-    const technology = getTechnologyById(techId);
-    const techName = technology?.name || techId;
-
-    for (const mitigationType of techMitigations) {
-      mitigations.push({
-        mitigationType,
-        techId,
-        techName,
-      });
-    }
+    mitigations.push(...getTechnologyMitigationsWithSource(techId));
   }
 
   return mitigations;
@@ -116,6 +118,7 @@ export function getUpstreamMitigations(
 
 /**
  * Check if a threat should be mitigated based on upstream protections and settings.
+ * When several mitigations apply, the strongest one wins.
  *
  * @param threatId The threat ID to check
  * @param upstreamMitigations Available upstream mitigations
@@ -132,27 +135,35 @@ export function checkPathwayMitigation(
     return { isMitigated: false };
   }
 
-  // Check each upstream mitigation to see if it applies to this threat
+  let best: PathwayMitigationResult = { isMitigated: false };
+
   for (const mitigation of upstreamMitigations) {
     const config = settings.mitigations[mitigation.mitigationType];
 
     // Skip if this mitigation type is disabled
     if (!config?.enabled) continue;
 
-    // Check if this mitigation type can mitigate the threat
-    if (canMitigateThreat(threatId, mitigation.mitigationType)) {
-      return {
-        isMitigated: true,
-        mitigationType: mitigation.mitigationType,
-        mitigatingTechId: mitigation.techId,
-        mitigatingTechName: mitigation.techName,
-        mode: config.mode,
-        reductionPercent: config.mode === 'reduce' ? config.reductionPercent : undefined,
-      };
+    // Skip if this mitigation type cannot mitigate the threat
+    if (!canMitigateThreat(threatId, mitigation.mitigationType)) continue;
+
+    const candidate: PathwayMitigationResult = {
+      isMitigated: true,
+      mitigationType: mitigation.mitigationType,
+      mitigatingTechId: mitigation.techId,
+      mitigatingTechName: mitigation.techName,
+      mode: config.mode,
+      reductionPercent: config.mode === 'reduce' ? config.reductionPercent : undefined,
+    };
+
+    // Nothing can beat a removal
+    if (candidate.mode === 'remove') return candidate;
+
+    if (!best.isMitigated || (candidate.reductionPercent ?? 0) > (best.reductionPercent ?? 0)) {
+      best = candidate;
     }
   }
 
-  return { isMitigated: false };
+  return best;
 }
 
 /**

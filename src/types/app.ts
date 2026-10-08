@@ -231,6 +231,17 @@ export interface PathwayMitigationSettings {
   mitigations: Record<PathwayMitigationType, PathwayMitigationConfig>;
 }
 
+// Range and step of the reduction slider in Settings. Imported values are
+// snapped into this range so they always land on a slider position.
+export const PATHWAY_REDUCTION_MIN = 10;
+export const PATHWAY_REDUCTION_MAX = 90;
+export const PATHWAY_REDUCTION_STEP = 5;
+
+function snapReductionPercent(percent: number): number {
+  const stepped = Math.round(percent / PATHWAY_REDUCTION_STEP) * PATHWAY_REDUCTION_STEP;
+  return Math.min(PATHWAY_REDUCTION_MAX, Math.max(PATHWAY_REDUCTION_MIN, stepped));
+}
+
 // Starting position for each mitigation's risk adjustment.
 const FALLBACK_MITIGATION_DEFAULT: Omit<PathwayMitigationConfig, 'enabled'> = {
   mode: 'reduce',
@@ -255,3 +266,35 @@ export const DEFAULT_PATHWAY_MITIGATION_SETTINGS: PathwayMitigationSettings = {
     ])
   ) as Record<PathwayMitigationType, PathwayMitigationConfig>,
 };
+
+
+// Reconcile saved pathway mitigation settings with the current catalogue.
+export function normalizePathwayMitigationSettings(
+  saved: Partial<PathwayMitigationSettings> | undefined,
+): PathwayMitigationSettings {
+  if (!saved) return DEFAULT_PATHWAY_MITIGATION_SETTINGS;
+
+  const savedMitigations: Partial<Record<string, Partial<PathwayMitigationConfig>>> =
+    saved.mitigations ?? {};
+
+  return {
+    enabled: typeof saved.enabled === 'boolean' ? saved.enabled : DEFAULT_PATHWAY_MITIGATION_SETTINGS.enabled,
+    mitigations: Object.fromEntries(
+      PATHWAY_MITIGATION_DEFINITIONS.map(m => {
+        const fallback = DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations[m.id];
+        const config = savedMitigations[m.id] ?? {};
+        return [
+          m.id,
+          {
+            enabled: typeof config.enabled === 'boolean' ? config.enabled : fallback.enabled,
+            mode: config.mode === 'remove' || config.mode === 'reduce' ? config.mode : fallback.mode,
+            reductionPercent:
+              typeof config.reductionPercent === 'number' && Number.isFinite(config.reductionPercent)
+                ? snapReductionPercent(config.reductionPercent)
+                : fallback.reductionPercent,
+          },
+        ];
+      })
+    ) as Record<PathwayMitigationType, PathwayMitigationConfig>,
+  };
+}
