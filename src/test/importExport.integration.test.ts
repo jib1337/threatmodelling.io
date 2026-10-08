@@ -161,6 +161,85 @@ describe('Import workflow', () => {
     expect(result.current.pathwayMitigationSettings).toEqual(customSettings);
   });
 
+  it('fills in mitigation types missing from saved settings with their defaults', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    // A file saved before 'network-firewall' existed in the catalogue
+    const { 'network-firewall': _omitted, ...olderMitigations } = DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations;
+    const savedSettings = {
+      enabled: true,
+      mitigations: {
+        ...olderMitigations,
+        'waf-protection': { enabled: true, mode: 'reduce' as const, reductionPercent: 70 },
+      },
+    } as unknown as ThreatModel['pathwayMitigationSettings'];
+    await act(async () => {
+      await result.current.importModel(baseModel({ pathwayMitigationSettings: savedSettings }));
+    });
+    const settings = result.current.pathwayMitigationSettings;
+    expect(settings.enabled).toBe(true);
+    expect(settings.mitigations['waf-protection']).toEqual({ enabled: true, mode: 'reduce', reductionPercent: 70 });
+    expect(settings.mitigations['network-firewall']).toEqual(
+      DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations['network-firewall'],
+    );
+  });
+
+  it('drops mitigation types the catalogue no longer defines', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const savedSettings = {
+      ...DEFAULT_PATHWAY_MITIGATION_SETTINGS,
+      mitigations: {
+        ...DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations,
+        'retired-mitigation': { enabled: true, mode: 'remove', reductionPercent: 50 },
+      },
+    } as unknown as ThreatModel['pathwayMitigationSettings'];
+    await act(async () => {
+      await result.current.importModel(baseModel({ pathwayMitigationSettings: savedSettings }));
+    });
+    expect(Object.keys(result.current.pathwayMitigationSettings.mitigations).sort()).toEqual(
+      Object.keys(DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations).sort(),
+    );
+  });
+
+  it('replaces malformed mitigation config values with defaults', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const savedSettings = {
+      enabled: true,
+      mitigations: {
+        ...DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations,
+        'ddos-protection': { enabled: 'yes', mode: 'obliterate', reductionPercent: 250 },
+      },
+    } as unknown as ThreatModel['pathwayMitigationSettings'];
+    await act(async () => {
+      await result.current.importModel(baseModel({ pathwayMitigationSettings: savedSettings }));
+    });
+    const fallback = DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations['ddos-protection'];
+    expect(result.current.pathwayMitigationSettings.mitigations['ddos-protection']).toEqual({
+      enabled: fallback.enabled,
+      mode: fallback.mode,
+      reductionPercent: 90,
+    });
+  });
+
+  it('snaps imported reduction percentages onto the settings slider', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const savedSettings = {
+      enabled: true,
+      mitigations: {
+        ...DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations,
+        'ddos-protection': { enabled: true, mode: 'reduce', reductionPercent: 0 },
+        'waf-protection': { enabled: true, mode: 'reduce', reductionPercent: 73 },
+        'rate-limiting': { enabled: true, mode: 'reduce', reductionPercent: 100 },
+      },
+    } as ThreatModel['pathwayMitigationSettings'];
+    await act(async () => {
+      await result.current.importModel(baseModel({ pathwayMitigationSettings: savedSettings }));
+    });
+    const { mitigations } = result.current.pathwayMitigationSettings;
+    expect(mitigations['ddos-protection'].reductionPercent).toBe(10);
+    expect(mitigations['waf-protection'].reductionPercent).toBe(75);
+    expect(mitigations['rate-limiting'].reductionPercent).toBe(90);
+  });
+
   it('gracefully skips nodes whose technology ID does not resolve', async () => {
     const { result } = renderHook(() => useThreatModel(), { wrapper });
     await act(async () => {

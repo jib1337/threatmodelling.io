@@ -1,10 +1,15 @@
 import { useEffect } from 'react';
-import { Zap, Shield, Timer, Network } from 'lucide-react';
+import { Zap, Shield, Timer, Network, ShieldCheck } from 'lucide-react';
 import { useSettings } from '../../context/ThreatModelContext';
 import type { PathwayMitigationType } from '../../data/schema';
 import {
+  PATHWAY_MITIGATION_DEFINITIONS,
   PATHWAY_MITIGATION_LABELS,
   PATHWAY_MITIGATION_DESCRIPTIONS,
+  DEFAULT_PATHWAY_MITIGATION_SETTINGS,
+  PATHWAY_REDUCTION_MIN,
+  PATHWAY_REDUCTION_MAX,
+  PATHWAY_REDUCTION_STEP,
 } from '../../data/schema';
 import { MITIGATION_PROVIDER_NAMES } from '../../data/mitigationMappings';
 import './SettingsModal.css';
@@ -14,12 +19,17 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-const MITIGATION_ICONS: Record<PathwayMitigationType, typeof Zap> = {
+// Icons for known mitigation types; a type added by a newer catalogue gets the fallback.
+const MITIGATION_ICONS: Partial<Record<PathwayMitigationType, typeof Zap>> = {
   'ddos-protection': Zap,
   'waf-protection': Shield,
   'rate-limiting': Timer,
   'network-firewall': Network,
 };
+const FALLBACK_MITIGATION_ICON = ShieldCheck;
+
+// Every mitigation type the catalogue defines, in catalogue order.
+const MITIGATION_TYPES = PATHWAY_MITIGATION_DEFINITIONS.map(m => m.id);
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { pathwayMitigationSettings, updatePathwayMitigationSettings } = useSettings();
@@ -51,6 +61,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
+  // Settings are normalised on import, but fall back to defaults
+  const getConfig = (type: PathwayMitigationType) =>
+    pathwayMitigationSettings.mitigations[type] ?? DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations[type];
+
   const handleMasterToggle = () => {
     updatePathwayMitigationSettings({
       ...pathwayMitigationSettings,
@@ -59,7 +73,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleMitigationToggle = (type: PathwayMitigationType) => {
-    const current = pathwayMitigationSettings.mitigations[type];
+    const current = getConfig(type);
     updatePathwayMitigationSettings({
       ...pathwayMitigationSettings,
       mitigations: {
@@ -73,7 +87,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleModeChange = (type: PathwayMitigationType, mode: 'remove' | 'reduce') => {
-    const current = pathwayMitigationSettings.mitigations[type];
+    const current = getConfig(type);
     updatePathwayMitigationSettings({
       ...pathwayMitigationSettings,
       mitigations: {
@@ -87,7 +101,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleReductionChange = (type: PathwayMitigationType, percent: number) => {
-    const current = pathwayMitigationSettings.mitigations[type];
+    const current = getConfig(type);
     updatePathwayMitigationSettings({
       ...pathwayMitigationSettings,
       mitigations: {
@@ -101,11 +115,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const renderMitigationCard = (type: PathwayMitigationType) => {
-    const config = pathwayMitigationSettings.mitigations[type];
-    const Icon = MITIGATION_ICONS[type];
+    const config = getConfig(type);
+    const Icon = MITIGATION_ICONS[type] ?? FALLBACK_MITIGATION_ICON;
     const isEnabled = pathwayMitigationSettings.enabled && config.enabled;
-    const providerNames = MITIGATION_PROVIDER_NAMES[type].slice(0, 3).join(', ');
-    const moreCount = MITIGATION_PROVIDER_NAMES[type].length - 3;
+    const allProviderNames = MITIGATION_PROVIDER_NAMES[type] ?? [];
+    const providerNames = allProviderNames.slice(0, 3).join(', ');
+    const moreCount = allProviderNames.length - 3;
 
     return (
       <div
@@ -166,9 +181,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
                 <input
                   type="range"
-                  min="10"
-                  max="90"
-                  step="5"
+                  min={PATHWAY_REDUCTION_MIN}
+                  max={PATHWAY_REDUCTION_MAX}
+                  step={PATHWAY_REDUCTION_STEP}
                   value={config.reductionPercent}
                   onChange={(e) => handleReductionChange(type, parseInt(e.target.value, 10))}
                 />
@@ -179,13 +194,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       </div>
     );
   };
-
-  const mitigationTypes: PathwayMitigationType[] = [
-    'ddos-protection',
-    'waf-protection',
-    'rate-limiting',
-    'network-firewall',
-  ];
 
   return (
     <div className="settings-modal-overlay" onClick={handleOverlayClick}>
@@ -215,7 +223,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </p>
 
             <div className={`mitigation-cards ${!pathwayMitigationSettings.enabled ? 'master-disabled' : ''}`}>
-              {mitigationTypes.map(renderMitigationCard)}
+              {MITIGATION_TYPES.map(renderMitigationCard)}
             </div>
           </section>
         </div>
