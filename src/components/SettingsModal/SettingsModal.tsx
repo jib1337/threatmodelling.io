@@ -65,6 +65,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const getConfig = (type: PathwayMitigationType) =>
     pathwayMitigationSettings.mitigations[type] ?? DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations[type];
 
+  const handleHideMitigatedToggle = () => {
+    updatePathwayMitigationSettings({
+      ...pathwayMitigationSettings,
+      hideMitigated: !pathwayMitigationSettings.hideMitigated,
+    });
+  };
+
   const handleMasterToggle = () => {
     updatePathwayMitigationSettings({
       ...pathwayMitigationSettings,
@@ -224,6 +231,25 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
             <div className={`mitigation-cards ${!pathwayMitigationSettings.enabled ? 'master-disabled' : ''}`}>
               {MITIGATION_TYPES.map(renderMitigationCard)}
+            </div>
+          </section>
+
+          {/* Not gated by the master toggle: encrypted connections are mitigated regardless */}
+          <section className="settings-section">
+            <div className="section-header">
+              <h3>Display</h3>
+            </div>
+
+            <div className="hide-mitigated-row">
+              <span className="hide-mitigated-label">Hide mitigated threats</span>
+              <button
+                className={`toggle-switch ${pathwayMitigationSettings.hideMitigated ? 'on' : 'off'}`}
+                onClick={handleHideMitigatedToggle}
+                aria-label="Hide mitigated threats"
+                aria-pressed={pathwayMitigationSettings.hideMitigated}
+              >
+                <span className="toggle-knob" />
+              </button>
             </div>
           </section>
         </div>

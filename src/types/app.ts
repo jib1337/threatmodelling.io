@@ -7,7 +7,7 @@ import type {
   ThreatSeverity,
   Technology,
 } from '../data/librarySchema';
-import { PATHWAY_MITIGATION_DEFINITIONS } from '../data/librarySchema';
+import { PATHWAY_MITIGATION_DEFINITIONS, PATHWAY_MITIGATION_LABELS } from '../data/librarySchema';
 
 // Network zone types for trust zones
 export type NetworkZone = 'public' | 'private';
@@ -128,7 +128,8 @@ export interface ActiveThreat {
   mitigatedBy?: ConnectionMitigation;
   // For network zone risk adjustment
   zoneMultiplier?: number;
-  // For pathway mitigations: indicates upstream protection
+  // For pathway mitigations: indicates upstream protection. In 'remove' mode the
+  // threat is mitigated (see isThreatMitigated) and riskScore is its unmitigated score.
   pathwayMitigatedBy?: {
     mitigationType: PathwayMitigationType;
     mitigatingTechId: string;
@@ -136,6 +137,49 @@ export interface ActiveThreat {
     mode: 'remove' | 'reduce';
     reductionPercent?: number;
   };
+}
+
+/**
+ * Whether a threat is mitigated outright — removed by an upstream pathway
+ * mitigation or protected by connection encryption — rather than active.
+ * A 'reduce' pathway mitigation leaves the threat active at a lower score.
+ */
+export function isThreatMitigated(threat: ActiveThreat): boolean {
+  return !!threat.mitigatedBy || threat.pathwayMitigatedBy?.mode === 'remove';
+}
+
+/**
+ * Split threats into active and mitigated for display or export. When
+ * hideMitigated is set, mitigated threats are dropped entirely.
+ */
+export function partitionMitigatedThreats(
+  threats: ActiveThreat[],
+  hideMitigated: boolean,
+): { active: ActiveThreat[]; mitigated: ActiveThreat[] } {
+  const active: ActiveThreat[] = [];
+  const mitigated: ActiveThreat[] = [];
+  for (const threat of threats) {
+    if (!isThreatMitigated(threat)) active.push(threat);
+    else if (!hideMitigated) mitigated.push(threat);
+  }
+  return { active, mitigated };
+}
+
+/**
+ * Human-readable description of what mitigates a threat, e.g.
+ * "AWS WAF (WAF Protection)" or "TLS Encrypted". Undefined when the threat
+ * is not mitigated.
+ */
+export function describeThreatMitigation(threat: ActiveThreat): string | undefined {
+  if (threat.pathwayMitigatedBy?.mode === 'remove') {
+    const { mitigatingTechName, mitigationType } = threat.pathwayMitigatedBy;
+    const label = PATHWAY_MITIGATION_LABELS[mitigationType] ?? mitigationType;
+    return `${mitigatingTechName} (${label})`;
+  }
+  if (threat.mitigatedBy) {
+    return CONNECTION_MITIGATION_LABELS[threat.mitigatedBy];
+  }
+  return undefined;
 }
 
 // Model state for export/import
@@ -228,6 +272,9 @@ export interface PathwayMitigationConfig {
 
 export interface PathwayMitigationSettings {
   enabled: boolean;  // Master toggle
+  // Hide mitigated threats (pathway removals and encrypted connections) in the
+  // app and in exported reports. Independent of the master toggle.
+  hideMitigated: boolean;
   mitigations: Record<PathwayMitigationType, PathwayMitigationConfig>;
 }
 
@@ -259,6 +306,7 @@ const MITIGATION_DEFAULTS: Partial<
 
 export const DEFAULT_PATHWAY_MITIGATION_SETTINGS: PathwayMitigationSettings = {
   enabled: false,
+  hideMitigated: false,
   mitigations: Object.fromEntries(
     PATHWAY_MITIGATION_DEFINITIONS.map(m => [
       m.id,
@@ -279,6 +327,9 @@ export function normalizePathwayMitigationSettings(
 
   return {
     enabled: typeof saved.enabled === 'boolean' ? saved.enabled : DEFAULT_PATHWAY_MITIGATION_SETTINGS.enabled,
+    hideMitigated: typeof saved.hideMitigated === 'boolean'
+      ? saved.hideMitigated
+      : DEFAULT_PATHWAY_MITIGATION_SETTINGS.hideMitigated,
     mitigations: Object.fromEntries(
       PATHWAY_MITIGATION_DEFINITIONS.map(m => {
         const fallback = DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations[m.id];

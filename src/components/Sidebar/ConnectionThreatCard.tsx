@@ -1,5 +1,5 @@
 import { useState, useCallback, memo } from 'react';
-import { Lock, RotateCcw } from 'lucide-react';
+import { Lock, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { GroupedConnectionThreat } from './ThreatSidebar';
 import {
   STRIDE_LABELS,
@@ -13,9 +13,11 @@ import './ThreatCard.css';
 
 interface ConnectionThreatCardProps {
   groupedThreat: GroupedConnectionThreat;
+  // Render as a mitigated threat (shown in the sidebar's Mitigated section)
+  mitigated?: boolean;
 }
 
-export default memo(function ConnectionThreatCard({ groupedThreat }: ConnectionThreatCardProps) {
+export default memo(function ConnectionThreatCard({ groupedThreat, mitigated = false }: ConnectionThreatCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { threat, connections, maxRiskScore, maxRiskLevel } = groupedThreat;
   const { setSeverityOverride, setControlImplemented } = useActions();
@@ -38,7 +40,7 @@ export default memo(function ConnectionThreatCard({ groupedThreat }: ConnectionT
   }, [overrideKey, setSeverityOverride]);
 
   return (
-    <div className={`threat-card ${isExpanded ? 'expanded' : ''} risk-${maxRiskLevel} connection-threat-card`}>
+    <div className={`threat-card ${isExpanded ? 'expanded' : ''} risk-${maxRiskLevel} connection-threat-card ${mitigated ? 'mitigated' : ''}`}>
       <button
         className="threat-card-header"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -46,6 +48,11 @@ export default memo(function ConnectionThreatCard({ groupedThreat }: ConnectionT
         <div className="threat-info">
           <div className="threat-name-row">
             <span className="threat-name">{threat.name}</span>
+            {mitigated && (
+              <span className="mitigated-indicator" title="Mitigated">
+                <ShieldCheck size={12} strokeWidth={2.5} />
+              </span>
+            )}
             <span className={`risk-badge risk-${maxRiskLevel}`}>
               {maxRiskScore}
             </span>
@@ -75,6 +82,11 @@ export default memo(function ConnectionThreatCard({ groupedThreat }: ConnectionT
                   {conn.zoneMultiplier && conn.zoneMultiplier < 1 && (
                     <span className="boundary-indicator" title={`Private network - ${Math.round((1 - conn.zoneMultiplier) * 100)}% reduction`}>
                       <Lock size={12} strokeWidth={2.5} />
+                    </span>
+                  )}
+                  {conn.mitigation && (
+                    <span className="mitigated-tag" title={`Mitigated by ${conn.mitigation}`}>
+                      {conn.mitigation}
                     </span>
                   )}
                   <span className={`connection-risk risk-${conn.riskLevel}`}>

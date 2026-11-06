@@ -272,6 +272,26 @@ describe('generateExecutiveSummary', () => {
     expect(body.length).toBe(1);
   });
 
+  it('counts shown mitigated threats in the overview', async () => {
+    const t1 = makeActive(makeThreat({ id: 'visible', name: 'Visible' }));
+    const t2 = makeActive(makeThreat({ id: 'tls', name: 'Mitigated By TLS' }), {
+      mitigatedBy: 'encrypted',
+    });
+    await generateExecutiveSummary('M', [makeNode('n1', 'EC2')], [], [t1, t2], null);
+    const text = allText(lastDoc);
+    expect(text).toContain('Total Threats: 1');
+    expect(text).toContain('Mitigated Threats: 1');
+  });
+
+  it('leaves mitigated threats out of the overview when hidden', async () => {
+    const t1 = makeActive(makeThreat({ id: 'visible', name: 'Visible' }));
+    const t2 = makeActive(makeThreat({ id: 'tls', name: 'Mitigated By TLS' }), {
+      mitigatedBy: 'encrypted',
+    });
+    await generateExecutiveSummary('M', [makeNode('n1', 'EC2')], [], [t1, t2], null, true);
+    expect(allText(lastDoc)).not.toContain('Mitigated Threats');
+  });
+
   it('includes the diagram image when one is provided', async () => {
     const fakeImage = 'data:image/png;base64,iVBORw0KGgo=';
     await generateExecutiveSummary('M', [makeNode('n1', 'EC2')], [], [], fakeImage);
@@ -436,6 +456,40 @@ describe('generateFullReport', () => {
     const text = allText(lastDoc);
     expect(text).toContain('COMPONENT: EC2');
     expect(text).not.toContain('COMPONENT: Untouched');
+  });
+
+  describe('mitigated threats', () => {
+    const active = () => makeActive(makeThreat({ id: 'live', name: 'Live Threat' }), { riskScore: 9, riskLevel: 'high' });
+    const removed = () => makeActive(makeThreat({ id: 'removed', name: 'Removed Threat' }), {
+      riskScore: 12,
+      riskLevel: 'high',
+      pathwayMitigatedBy: {
+        mitigationType: 'waf-protection',
+        mitigatingTechId: 'aws-waf',
+        mitigatingTechName: 'AWS WAF',
+        mode: 'remove',
+      },
+    });
+
+    it('lists mitigated threats in their own table, not on component pages', async () => {
+      await generateFullReport('M', [makeNode('n1', 'EC2')], [], [active(), removed()], null);
+      const text = allText(lastDoc);
+      expect(text).toContain('MITIGATED THREATS');
+      expect(text).not.toContain('Removed Threat');
+      const table = autoTableCalls.find(c => (c.head as string[][])[0][0] === 'Threat' && (c.head as string[][])[0][3] === 'Mitigated By');
+      expect(table?.body).toEqual([['Removed Threat', 'EC2', '12 (High)', 'AWS WAF (WAF Protection)']]);
+    });
+
+    it('omits the mitigated table when hideMitigated is set', async () => {
+      await generateFullReport('M', [makeNode('n1', 'EC2')], [], [active(), removed()], null, {}, true);
+      expect(allText(lastDoc)).not.toContain('MITIGATED THREATS');
+      expect(autoTableCalls.some(c => (c.head as string[][])[0][3] === 'Mitigated By')).toBe(false);
+    });
+
+    it('omits the mitigated table when nothing is mitigated', async () => {
+      await generateFullReport('M', [makeNode('n1', 'EC2')], [], [active()], null);
+      expect(allText(lastDoc)).not.toContain('MITIGATED THREATS');
+    });
   });
 });
 

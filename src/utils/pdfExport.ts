@@ -1,6 +1,6 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
 import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType } from '../data/schema';
-import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS } from '../data/schema';
+import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation } from '../data/schema';
 import type { Node, Edge } from '@xyflow/react';
 import { buildControlKey } from './controlFingerprint';
 
@@ -153,7 +153,8 @@ function addExecutiveSummaryContent(
   edges: Edge[],
   threats: ActiveThreat[],
   diagramImage: string | null,
-  startY: number
+  startY: number,
+  mitigatedCount = 0,
 ): number {
   let y = startY;
   const pageWidth = doc.internal.pageSize.width;
@@ -177,6 +178,9 @@ function addExecutiveSummaryContent(
     [`Components: ${nodes.length}`, `Data Flows: ${edges.length}`],
     [`Total Threats: ${threats.length}`, `Unique Threats: ${uniqueThreats}`],
   ];
+  if (mitigatedCount > 0) {
+    overviewItems.push([`Mitigated Threats: ${mitigatedCount}`, '']);
+  }
 
   overviewItems.forEach(row => {
     doc.text(row[0], margin, y);
@@ -333,9 +337,58 @@ function addExecutiveSummaryContent(
   return y;
 }
 
-// Filter out mitigated connection threats (those protected by TLS-enforcing services)
-function filterMitigatedThreats(threats: ActiveThreat[]): ActiveThreat[] {
-  return threats.filter(t => !t.mitigatedBy);
+// Table of threats mitigated by upstream protections or connection encryption.
+// Scores are the unmitigated scores.
+function addMitigatedThreatsSection(
+  doc: ExtendedJsPDF,
+  autoTable: AutoTableFn,
+  threats: ActiveThreat[],
+  margin: number,
+  startY: number
+): number {
+  if (threats.length === 0) {
+    return startY;
+  }
+
+  let y = startY;
+  const sorted = [...threats].sort((a, b) => b.riskScore - a.riskScore);
+
+  // Section header
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('MITIGATED THREATS', margin, y);
+  y += 6;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  doc.text('The following threats are mitigated by upstream protections or connection encryption.', margin, y);
+  y += 4;
+  doc.text('Scores are shown as they would be without the mitigation.', margin, y);
+  y += 4;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Threat', 'Affects', 'Unmitigated Score', 'Mitigated By']],
+    body: sorted.map(t => [
+      t.threat.name,
+      t.sourceTechName,
+      `${t.riskScore} (${RISK_LEVEL_LABELS[t.riskLevel]})`,
+      describeThreatMitigation(t) ?? '',
+    ]),
+    headStyles: {
+      fillColor: HEADER_COLOR,
+      fontSize: 9,
+      fontStyle: 'bold',
+    },
+    bodyStyles: {
+      fontSize: 9,
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  return doc.lastAutoTable.finalY + 8;
 }
 
 function addOutOfScopeSection(
@@ -401,7 +454,8 @@ export async function generateExecutiveSummary(
   nodes: Node<TechNodeData>[],
   edges: Edge[],
   threats: ActiveThreat[],
-  diagramImage: string | null
+  diagramImage: string | null,
+  hideMitigated = false,
 ): Promise<void> {
   // Dynamically import jspdf and jspdf-autotable
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -409,8 +463,9 @@ export async function generateExecutiveSummary(
     import('jspdf-autotable'),
   ]);
 
-  // Filter out mitigated threats before generating the report
-  const filteredThreats = filterMitigatedThreats(threats);
+  // Mitigated threats are counted separately (or omitted when hidden)
+  const { active: filteredThreats, mitigated: mitigatedThreats } =
+    partitionMitigatedThreats(threats, hideMitigated);
 
   // Cast to ExtendedJsPDF since jspdf-autotable adds lastAutoTable property
   const doc = new jsPDF({
@@ -442,7 +497,7 @@ export async function generateExecutiveSummary(
   doc.line(margin, 40, pageWidth - margin, 40);
 
   // Add content
-  let y = addExecutiveSummaryContent(doc, autoTable, nodes, edges, filteredThreats, diagramImage, 48);
+  let y = addExecutiveSummaryContent(doc, autoTable, nodes, edges, filteredThreats, diagramImage, 48, mitigatedThreats.length);
 
   // Add out of scope section
   addOutOfScopeSection(doc, autoTable, nodes, margin, y);
@@ -673,7 +728,8 @@ export async function generateFullReport(
   edges: Edge[],
   threats: ActiveThreat[],
   diagramImage: string | null,
-  implementedControls: Record<string, true> = {}
+  implementedControls: Record<string, true> = {},
+  hideMitigated = false,
 ): Promise<void> {
   // Dynamically import jspdf and jspdf-autotable
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -681,8 +737,9 @@ export async function generateFullReport(
     import('jspdf-autotable'),
   ]);
 
-  // Filter out mitigated threats before generating the report
-  const filteredThreats = filterMitigatedThreats(threats);
+  // Mitigated threats get their own section (or are omitted when hidden)
+  const { active: filteredThreats, mitigated: mitigatedThreats } =
+    partitionMitigatedThreats(threats, hideMitigated);
 
   // Cast to ExtendedJsPDF since jspdf-autotable adds lastAutoTable property
   const doc = new jsPDF({
@@ -713,7 +770,7 @@ export async function generateFullReport(
   doc.setDrawColor(200, 200, 200);
   doc.line(margin, 40, pageWidth - margin, 40);
 
-  addExecutiveSummaryContent(doc, autoTable, nodes, edges, filteredThreats, diagramImage, 48);
+  addExecutiveSummaryContent(doc, autoTable, nodes, edges, filteredThreats, diagramImage, 48, mitigatedThreats.length);
 
   // Group threats by component for detail pages
   const componentMap = groupThreatsByComponent(nodes, edges, filteredThreats);
@@ -858,6 +915,12 @@ export async function generateFullReport(
 
   // Add zone threat pages (if any private zones exist)
   addZoneThreatPages(doc, filteredThreats, margin, implementedControls);
+
+  // Add mitigated threats on a new page (if any are shown)
+  if (mitigatedThreats.length > 0) {
+    doc.addPage();
+    addMitigatedThreatsSection(doc, autoTable, mitigatedThreats, margin, 20);
+  }
 
   // Add out of scope section on a new page (if there are excluded nodes)
   const excludedNodes = nodes.filter(node => node.data.threatsDisabled);

@@ -298,3 +298,20 @@
     padding: 12px;
   }
 }
+
+/* Hide mitigated threats option */
+.hide-mitigated-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.hide-mitigated-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}

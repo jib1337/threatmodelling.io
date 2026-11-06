@@ -1119,7 +1119,9 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
     const baseFingerprint = createThreatFingerprint(nodes, edges, boundaries);
     // Include pathway mitigation settings, severity overrides, and custom tech threatIds in fingerprint
     const customTechFingerprint = state.customTechnologies.map(t => `${t.id}:${t.threatIds.join(',')}`).join('|');
-    const fingerprint = baseFingerprint + JSON.stringify(state.pathwayMitigationSettings) + JSON.stringify(state.severityOverrides) + customTechFingerprint;
+    // hideMitigated only affects display, not resolution, so it stays out of the fingerprint
+    const { hideMitigated: _displayOnly, ...resolutionSettings } = state.pathwayMitigationSettings;
+    const fingerprint = baseFingerprint + JSON.stringify(resolutionSettings) + JSON.stringify(state.severityOverrides) + customTechFingerprint;
     return { nodes, edges, boundaries, fingerprint, pathwayMitigationSettings: state.pathwayMitigationSettings, severityOverrides: state.severityOverrides };
   }, [state.nodes, state.edges, state.boundaries, state.pathwayMitigationSettings, state.severityOverrides, state.customTechnologies]);
 

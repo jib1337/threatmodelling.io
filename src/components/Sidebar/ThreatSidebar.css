@@ -316,3 +316,38 @@
     display: none;
   }
 }
+
+/* Mitigated threats section */
+.mitigated-threats-section {
+  margin-top: 16px;
+}
+
+.section-divider.mitigated-section {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #22c55e;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mitigated-section .section-label {
+  color: #22c55e;
+}
+
+.mitigated-section .section-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.section-chevron {
+  color: #22c55e;
+  transition: transform 0.15s;
+}
+
+.section-chevron.expanded {
+  transform: rotate(90deg);
+}
