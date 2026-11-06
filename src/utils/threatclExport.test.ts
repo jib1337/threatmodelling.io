@@ -223,7 +223,7 @@ function buildRepresentativeModel() {
         label: 'HTTPS',
       },
     }),
-    // A threat that should be filtered out because it is marked mitigated
+    // A threat mitigated on its only instance
     makeActiveThreat(dos, {
       sourceNodeId: 'n-ec2',
       sourceTechName: 'EC2 Instance',
@@ -412,12 +412,97 @@ describe('generateThreatclDocument', () => {
     expect(refMatch![1]).toContain('"Host B"');
   });
 
-  it('filters out threats flagged as mitigated before rendering', () => {
-    const { nodes, edges, boundaries, activeThreats } = buildRepresentativeModel();
-    const hcl = generateThreatclDocument('M', nodes, edges, activeThreats, boundaries);
-    // The DoS threat in the fixture is mitigatedBy: 'internal'
-    expect(hcl).not.toMatch(/threat "Denial of Service"/);
-    expect(hcl).toMatch(/threat "SQL Injection"/);
+  describe('mitigated threats', () => {
+    // Extract one threat block from the document
+    const threatBlock = (hcl: string, name: string): string => {
+      const match = hcl.match(new RegExp(`  threat "${name}" \\{[\\s\\S]*?\\n  \\}`));
+      return match?.[0] ?? '';
+    };
+
+    it('emits a fully mitigated threat with an implemented mitigation control', () => {
+      const { nodes, edges, boundaries, activeThreats } = buildRepresentativeModel();
+      const hcl = generateThreatclDocument('M', nodes, edges, activeThreats, boundaries);
+      // The DoS threat in the fixture is mitigatedBy: 'internal'
+      const block = threatBlock(hcl, 'Denial of Service');
+      expect(block).not.toBe('');
+      expect(block).toMatch(/Mitigated: Connection protection: Internal Network/);
+      expect(block).toMatch(
+        /control "mitigation-1" \{\s+description = "Connection protection: Internal Network"\s+implemented = true/,
+      );
+    });
+
+    it('describes a pathway removal as upstream protection', () => {
+      const { nodes, edges, boundaries } = buildRepresentativeModel();
+      const threat = makeThreat({ id: 'injection-attack', name: 'Injection' });
+      const hcl = generateThreatclDocument('M', nodes, edges, [
+        makeActiveThreat(threat, {
+          sourceNodeId: 'n-ec2',
+          sourceTechName: 'EC2 Instance',
+          pathwayMitigatedBy: {
+            mitigationType: 'waf-protection',
+            mitigatingTechId: 'aws-waf',
+            mitigatingTechName: 'AWS WAF',
+            mode: 'remove',
+          },
+        }),
+      ], boundaries);
+      expect(threatBlock(hcl, 'Injection')).toMatch(
+        /description = "Upstream protection: AWS WAF \(WAF Protection\)"\s+implemented = true/,
+      );
+    });
+
+    it('does not treat a reduce-mode pathway mitigation as mitigated', () => {
+      const { nodes, edges, boundaries } = buildRepresentativeModel();
+      const threat = makeThreat({ id: 'dos-attack', name: 'Flood' });
+      const hcl = generateThreatclDocument('M', nodes, edges, [
+        makeActiveThreat(threat, {
+          pathwayMitigatedBy: {
+            mitigationType: 'ddos-protection',
+            mitigatingTechId: 'aws-cloudfront',
+            mitigatingTechName: 'CloudFront',
+            mode: 'reduce',
+            reductionPercent: 50,
+          },
+        }),
+      ], boundaries);
+      const block = threatBlock(hcl, 'Flood');
+      expect(block).not.toBe('');
+      expect(block).not.toMatch(/Mitigated/);
+      expect(block).not.toMatch(/control "mitigation-/);
+    });
+
+    it('notes mitigated instances of a partially mitigated threat and leaves the mitigation unimplemented', () => {
+      const { nodes, edges, boundaries } = buildRepresentativeModel();
+      const threat = makeThreat({ id: 't-shared', name: 'Shared Threat' });
+      const hcl = generateThreatclDocument('M', nodes, edges, [
+        makeActiveThreat(threat, { sourceNodeId: 'n-ec2', sourceTechName: 'EC2 Instance' }),
+        makeActiveThreat(threat, {
+          sourceNodeId: 'n-rds',
+          sourceTechName: 'RDS Postgres',
+          pathwayMitigatedBy: {
+            mitigationType: 'waf-protection',
+            mitigatingTechId: 'aws-waf',
+            mitigatingTechName: 'AWS WAF',
+            mode: 'remove',
+          },
+        }),
+      ], boundaries);
+      const block = threatBlock(hcl, 'Shared Threat');
+      expect(block).toMatch(/Affects components: EC2 Instance\n/);
+      expect(block).not.toMatch(/Affects components: .*RDS Postgres/);
+      expect(block).toMatch(/Mitigated on: RDS Postgres \(by AWS WAF \(WAF Protection\)\)/);
+      expect(block).toMatch(
+        /description = "Upstream protection: AWS WAF \(WAF Protection\)"\s+implemented = false/,
+      );
+    });
+
+    it('omits mitigated threats entirely when hideMitigated is set', () => {
+      const { nodes, edges, boundaries, activeThreats } = buildRepresentativeModel();
+      const hcl = generateThreatclDocument('M', nodes, edges, activeThreats, boundaries, {}, true);
+      expect(hcl).not.toMatch(/threat "Denial of Service"/);
+      expect(hcl).not.toMatch(/control "mitigation-/);
+      expect(hcl).toMatch(/threat "SQL Injection"/);
+    });
   });
 
   it('prefers tech-specific mitigations over generic controls when present', () => {
@@ -706,6 +791,31 @@ describeIfBin('threatcl binary validation', () => {
     const file = join(dir, 'model.hcl');
     writeFileSync(file, hcl);
 
+    const output = execFileSync(threatclBin!, ['validate', file], { encoding: 'utf8' });
+    expect(output).toMatch(/Validated 1 threatmodels/);
+  });
+
+  it('validates a model with fully and partially mitigated threats', () => {
+    const { nodes, edges, boundaries, activeThreats } = buildRepresentativeModel();
+    const removedBy = {
+      mitigationType: 'waf-protection' as const,
+      mitigatingTechId: 'aws-waf',
+      mitigatingTechName: 'AWS WAF',
+      mode: 'remove' as const,
+    };
+    const shared = makeThreat({ id: 't-shared', name: 'Shared Threat' });
+    const removed = makeThreat({ id: 't-removed', name: 'Removed Threat' });
+    const hcl = generateThreatclDocument('Mitigated Model', nodes, edges, [
+      ...activeThreats,
+      makeActiveThreat(shared, { sourceNodeId: 'n-ec2', sourceTechName: 'EC2 Instance' }),
+      makeActiveThreat(shared, { sourceNodeId: 'n-rds', sourceTechName: 'RDS Postgres', pathwayMitigatedBy: removedBy }),
+      makeActiveThreat(removed, { sourceNodeId: 'n-s3', sourceTechName: 'S3 Bucket', pathwayMitigatedBy: removedBy }),
+    ], boundaries);
+    expect(hcl).toMatch(/implemented = false\s+risk_reduction = \d+\s+\}\s+\}/);
+
+    const dir = mkdtempSync(join(tmpdir(), 'threatcl-test-'));
+    const file = join(dir, 'model.hcl');
+    writeFileSync(file, hcl);
     const output = execFileSync(threatclBin!, ['validate', file], { encoding: 'utf8' });
     expect(output).toMatch(/Validated 1 threatmodels/);
   });

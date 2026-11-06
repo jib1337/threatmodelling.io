@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { useThreats, useSelection, useDiagramState } from '../../context/ThreatModelContext';
+import { useCallback, useMemo, useState } from 'react';
+import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { useThreats, useSelection, useDiagramState, useSettings } from '../../context/ThreatModelContext';
 import { groupThreatsByTechnology } from '../../utils/threatResolver';
 import type { ActiveThreat, RiskLevel, CloudProvider, ZoneNetworkType, ThreatSeverity } from '../../data/schema';
-import { RISK_LEVEL_LABELS } from '../../data/schema';
+import { RISK_LEVEL_LABELS, partitionMitigatedThreats, describeThreatMitigation } from '../../data/schema';
 import ThreatCard from './ThreatCard';
 import ConnectionThreatCard from './ConnectionThreatCard';
 import ZoneThreatCard from './ZoneThreatCard';
@@ -25,6 +25,8 @@ export interface GroupedConnectionThreat {
     targetProvider?: CloudProvider;
     zoneMultiplier?: number;
     overriddenSeverity?: ThreatSeverity;
+    // Set when this connection's threat is mitigated (e.g. "TLS Encrypted")
+    mitigation?: string;
   }>;
   maxRiskScore: number;
   maxRiskLevel: RiskLevel;
@@ -46,13 +48,102 @@ export interface GroupedZoneThreat {
   maxRiskLevel: RiskLevel;
 }
 
+// Separate component threats from connection and zone threats, and group the
+// connection and zone threats by threat ID for deduplicated display
+function groupThreatsForDisplay(threats: ActiveThreat[]): {
+  componentThreats: ActiveThreat[];
+  groupedConnectionThreats: GroupedConnectionThreat[];
+  groupedZoneThreats: GroupedZoneThreat[];
+} {
+  const component: ActiveThreat[] = [];
+  const connectionMap = new Map<string, GroupedConnectionThreat>();
+  const zoneMap = new Map<string, GroupedZoneThreat>();
+
+  threats.forEach(at => {
+    if (at.isConnectionThreat && at.connectionInfo) {
+      const existing = connectionMap.get(at.threat.id);
+      const connectionData = {
+        edgeId: at.connectionInfo.edgeId,
+        sourceNodeName: at.connectionInfo.sourceNodeName,
+        targetNodeName: at.connectionInfo.targetNodeName,
+        label: at.connectionInfo.label,
+        riskScore: at.riskScore,
+        riskLevel: at.riskLevel,
+        sourceProvider: at.connectionInfo.sourceProvider,
+        targetProvider: at.connectionInfo.targetProvider,
+        zoneMultiplier: at.zoneMultiplier,
+        overriddenSeverity: at.overriddenSeverity,
+        mitigation: describeThreatMitigation(at),
+      };
+
+      if (existing) {
+        existing.connections.push(connectionData);
+        if (at.riskScore > existing.maxRiskScore) {
+          existing.maxRiskScore = at.riskScore;
+          existing.maxRiskLevel = at.riskLevel;
+        }
+      } else {
+        connectionMap.set(at.threat.id, {
+          threat: at.threat,
+          connections: [connectionData],
+          maxRiskScore: at.riskScore,
+          maxRiskLevel: at.riskLevel,
+        });
+      }
+    } else if (at.isZoneThreat && at.zoneInfo) {
+      // Handle zone threats
+      const existing = zoneMap.get(at.threat.id);
+      const zoneData = {
+        boundaryId: at.zoneInfo.boundaryId,
+        zoneName: at.zoneInfo.zoneName,
+        networkType: at.zoneInfo.networkType,
+        riskScore: at.riskScore,
+        riskLevel: at.riskLevel,
+        riskReductionPercent: at.zoneInfo.riskReductionPercent,
+        overriddenSeverity: at.overriddenSeverity,
+      };
+
+      if (existing) {
+        existing.zones.push(zoneData);
+        if (at.riskScore > existing.maxRiskScore) {
+          existing.maxRiskScore = at.riskScore;
+          existing.maxRiskLevel = at.riskLevel;
+        }
+      } else {
+        zoneMap.set(at.threat.id, {
+          threat: at.threat,
+          zones: [zoneData],
+          maxRiskScore: at.riskScore,
+          maxRiskLevel: at.riskLevel,
+        });
+      }
+    } else {
+      component.push(at);
+    }
+  });
+
+  // Convert maps to arrays, filter out threats with no entries, and sort by max risk score
+  const groupedConnections = Array.from(connectionMap.values())
+    .filter(g => g.connections.length > 0)
+    .sort((a, b) => b.maxRiskScore - a.maxRiskScore);
+
+  const groupedZones = Array.from(zoneMap.values())
+    .filter(g => g.zones.length > 0)
+    .sort((a, b) => b.maxRiskScore - a.maxRiskScore);
+
+  return { componentThreats: component, groupedConnectionThreats: groupedConnections, groupedZoneThreats: groupedZones };
+}
+
 export default function ThreatSidebar() {
   const { activeThreats } = useThreats();
+  const { pathwayMitigationSettings } = useSettings();
+  const hideMitigated = pathwayMitigationSettings.hideMitigated;
   const { selectedNodeId, selectedEdgeId, selectedBoundaryId, setSelectedNode, setSelectedEdge, setSelectedBoundary } = useSelection();
   const { nodes, edges } = useDiagramState();
   const [filterQuery, setFilterQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('risk-high');
   const [riskFilter, setRiskFilter] = useState<RiskLevel | null>(null);
+  const [mitigatedExpanded, setMitigatedExpanded] = useState(true);
 
   const hasSelection = selectedNodeId !== null || selectedEdgeId !== null || selectedBoundaryId !== null;
 
@@ -121,20 +212,28 @@ export default function ThreatSidebar() {
     setSelectedBoundary(null);
   };
 
-  const totalThreatCount = selectionFilteredThreats.length;
+  // Split into active and mitigated threats. Mitigated threats are listed in
+  // their own section (or dropped when hidden) and never count towards totals.
+  const { active: selectionActiveThreats, mitigated: selectionMitigatedThreats } = useMemo(
+    () => partitionMitigatedThreats(selectionFilteredThreats, hideMitigated),
+    [selectionFilteredThreats, hideMitigated],
+  );
 
-  // Calculate risk summary from selection-filtered threats
+  const totalThreatCount = selectionActiveThreats.length;
+  const hasAnyThreats = selectionActiveThreats.length > 0 || selectionMitigatedThreats.length > 0;
+
+  // Calculate risk summary from active selection-filtered threats
   const riskSummary = useMemo(() => {
     const summary: Record<RiskLevel, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    selectionFilteredThreats.forEach(at => {
+    selectionActiveThreats.forEach(at => {
       summary[at.riskLevel]++;
     });
     return summary;
-  }, [selectionFilteredThreats]);
+  }, [selectionActiveThreats]);
 
-  // Filter threats
-  const filteredThreats = useMemo(() => {
-    let result = selectionFilteredThreats;
+  // Filter threats (risk level and text search apply to both sections)
+  const applyFilters = useCallback((threats: ActiveThreat[]) => {
+    let result = threats;
 
     // Apply risk level filter
     if (riskFilter) {
@@ -158,17 +257,32 @@ export default function ThreatSidebar() {
     }
 
     return result;
-  }, [selectionFilteredThreats, filterQuery, riskFilter]);
+  }, [filterQuery, riskFilter]);
+
+  const filteredThreats = useMemo(
+    () => applyFilters(selectionActiveThreats),
+    [applyFilters, selectionActiveThreats],
+  );
+  const filteredMitigatedThreats = useMemo(
+    () => applyFilters(selectionMitigatedThreats),
+    [applyFilters, selectionMitigatedThreats],
+  );
 
   // Sort threats
-  const sortedThreats = useMemo(() => {
+  const sortThreats = useCallback((threats: ActiveThreat[]) => {
     if (sortBy === 'risk-high') {
-      return [...filteredThreats].sort((a, b) => b.riskScore - a.riskScore);
+      return [...threats].sort((a, b) => b.riskScore - a.riskScore);
     } else if (sortBy === 'risk-low') {
-      return [...filteredThreats].sort((a, b) => a.riskScore - b.riskScore);
+      return [...threats].sort((a, b) => a.riskScore - b.riskScore);
     }
-    return filteredThreats;
-  }, [filteredThreats, sortBy]);
+    return threats;
+  }, [sortBy]);
+
+  const sortedThreats = useMemo(() => sortThreats(filteredThreats), [sortThreats, filteredThreats]);
+  const sortedMitigatedThreats = useMemo(
+    () => sortThreats(filteredMitigatedThreats),
+    [sortThreats, filteredMitigatedThreats],
+  );
 
   // Group threats by source (only when sortBy === 'source')
   const groupedThreats = useMemo(() => {
@@ -187,91 +301,15 @@ export default function ThreatSidebar() {
     return map;
   }, [filteredThreats]);
 
-  // Separate component threats from connection and zone threats, and group them by threat ID
-  // Filter out mitigated connections entirely
-  const { componentThreats, groupedConnectionThreats, groupedZoneThreats } = useMemo(() => {
-    const component: ActiveThreat[] = [];
-    const connectionMap = new Map<string, GroupedConnectionThreat>();
-    const zoneMap = new Map<string, GroupedZoneThreat>();
+  const { componentThreats, groupedConnectionThreats, groupedZoneThreats } = useMemo(
+    () => groupThreatsForDisplay(sortedThreats),
+    [sortedThreats],
+  );
 
-    sortedThreats.forEach(at => {
-      if (at.isConnectionThreat && at.connectionInfo) {
-        // Skip mitigated connections entirely
-        if (at.mitigatedBy) {
-          return;
-        }
-
-        const existing = connectionMap.get(at.threat.id);
-        const connectionData = {
-          edgeId: at.connectionInfo.edgeId,
-          sourceNodeName: at.connectionInfo.sourceNodeName,
-          targetNodeName: at.connectionInfo.targetNodeName,
-          label: at.connectionInfo.label,
-          riskScore: at.riskScore,
-          riskLevel: at.riskLevel,
-          sourceProvider: at.connectionInfo.sourceProvider,
-          targetProvider: at.connectionInfo.targetProvider,
-          zoneMultiplier: at.zoneMultiplier,
-          overriddenSeverity: at.overriddenSeverity,
-        };
-
-        if (existing) {
-          existing.connections.push(connectionData);
-          if (at.riskScore > existing.maxRiskScore) {
-            existing.maxRiskScore = at.riskScore;
-            existing.maxRiskLevel = at.riskLevel;
-          }
-        } else {
-          connectionMap.set(at.threat.id, {
-            threat: at.threat,
-            connections: [connectionData],
-            maxRiskScore: at.riskScore,
-            maxRiskLevel: at.riskLevel,
-          });
-        }
-      } else if (at.isZoneThreat && at.zoneInfo) {
-        // Handle zone threats
-        const existing = zoneMap.get(at.threat.id);
-        const zoneData = {
-          boundaryId: at.zoneInfo.boundaryId,
-          zoneName: at.zoneInfo.zoneName,
-          networkType: at.zoneInfo.networkType,
-          riskScore: at.riskScore,
-          riskLevel: at.riskLevel,
-          riskReductionPercent: at.zoneInfo.riskReductionPercent,
-          overriddenSeverity: at.overriddenSeverity,
-        };
-
-        if (existing) {
-          existing.zones.push(zoneData);
-          if (at.riskScore > existing.maxRiskScore) {
-            existing.maxRiskScore = at.riskScore;
-            existing.maxRiskLevel = at.riskLevel;
-          }
-        } else {
-          zoneMap.set(at.threat.id, {
-            threat: at.threat,
-            zones: [zoneData],
-            maxRiskScore: at.riskScore,
-            maxRiskLevel: at.riskLevel,
-          });
-        }
-      } else {
-        component.push(at);
-      }
-    });
-
-    // Convert maps to arrays, filter out threats with no entries, and sort by max risk score
-    const groupedConnections = Array.from(connectionMap.values())
-      .filter(g => g.connections.length > 0)
-      .sort((a, b) => b.maxRiskScore - a.maxRiskScore);
-
-    const groupedZones = Array.from(zoneMap.values())
-      .filter(g => g.zones.length > 0)
-      .sort((a, b) => b.maxRiskScore - a.maxRiskScore);
-
-    return { componentThreats: component, groupedConnectionThreats: groupedConnections, groupedZoneThreats: groupedZones };
-  }, [sortedThreats]);
+  const mitigatedGroups = useMemo(
+    () => groupThreatsForDisplay(sortedMitigatedThreats),
+    [sortedMitigatedThreats],
+  );
 
   return (
     <div className="threat-sidebar">
@@ -288,7 +326,7 @@ export default function ThreatSidebar() {
           </div>
         )}
 
-        {selectionFilteredThreats.length > 0 && (
+        {hasAnyThreats && (
           <div className="risk-summary">
             {(['critical', 'high', 'medium', 'low'] as RiskLevel[]).map(level => (
               <button
@@ -303,7 +341,7 @@ export default function ThreatSidebar() {
           </div>
         )}
 
-        {selectionFilteredThreats.length > 0 && (
+        {hasAnyThreats && (
           <div className="controls-row">
             <select
               className="sort-select"
@@ -317,7 +355,7 @@ export default function ThreatSidebar() {
           </div>
         )}
 
-        {selectionFilteredThreats.length > 0 && (
+        {hasAnyThreats && (
           <input
             type="search"
             placeholder="Filter threats..."
@@ -329,7 +367,7 @@ export default function ThreatSidebar() {
       </div>
 
       <div className="sidebar-content">
-        {selectionFilteredThreats.length === 0 ? (
+        {!hasAnyThreats ? (
           <div className="empty-state">
             <div className="empty-icon"><ShieldCheck size={48} strokeWidth={1.5} /></div>
             <p>No threats to display</p>
@@ -339,7 +377,7 @@ export default function ThreatSidebar() {
                 : 'Add technologies to the diagram to see associated threats'}
             </p>
           </div>
-        ) : filteredThreats.length === 0 ? (
+        ) : filteredThreats.length === 0 && filteredMitigatedThreats.length === 0 ? (
           <div className="no-results">
             {riskFilter && !filterQuery.trim()
               ? `No ${RISK_LEVEL_LABELS[riskFilter].toLowerCase()} risk threats`
@@ -347,73 +385,120 @@ export default function ThreatSidebar() {
               ? `No ${RISK_LEVEL_LABELS[riskFilter].toLowerCase()} risk threats match "${filterQuery}"`
               : `No threats match "${filterQuery}"`}
           </div>
-        ) : sortBy === 'source' && groupedThreats ? (
-          // Grouped view
-          Array.from(groupedThreats.entries()).map(([nodeId, { techName, isConnection }]) => {
-            const nodeThreats = threatsByNodeId.get(nodeId) || [];
-            if (nodeThreats.length === 0) return null;
-
-            return (
-              <div key={nodeId} className={`tech-threat-group ${isConnection ? 'connection-group' : ''}`}>
-                <div className="group-header">
-                  <span className="group-icon">{isConnection ? '🔗' : '🖥️'}</span>
-                  <span className="group-name">{techName}</span>
-                  <span className="group-count">{nodeThreats.length}</span>
-                </div>
-                <div className="group-threats">
-                  {nodeThreats.map(activeThreat => (
-                    <ThreatCard
-                      key={`${nodeId}-${activeThreat.threat.id}`}
-                      activeThreat={activeThreat}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })
         ) : (
-          // Flat sorted list with deduplicated connection threats
-          <div className="threats-list">
-            {/* Component threats */}
-            {componentThreats.map(activeThreat => (
-              <ThreatCard
-                key={`${activeThreat.sourceNodeId}-${activeThreat.threat.id}`}
-                activeThreat={activeThreat}
-              />
-            ))}
+          <>
+            {filteredThreats.length === 0 ? (
+              <div className="no-results">No active threats</div>
+            ) : sortBy === 'source' && groupedThreats ? (
+              // Grouped view
+              Array.from(groupedThreats.entries()).map(([nodeId, { techName, isConnection }]) => {
+                const nodeThreats = threatsByNodeId.get(nodeId) || [];
+                if (nodeThreats.length === 0) return null;
 
-            {/* Grouped connection threats */}
-            {groupedConnectionThreats.length > 0 && (
-              <div className="connection-threats-section">
-                <div className="section-divider">
-                  <span className="section-icon">🔗</span>
-                  <span className="section-label">Connection Threats</span>
-                </div>
-                {groupedConnectionThreats.map(groupedThreat => (
-                  <ConnectionThreatCard
-                    key={groupedThreat.threat.id}
-                    groupedThreat={groupedThreat}
+                return (
+                  <div key={nodeId} className={`tech-threat-group ${isConnection ? 'connection-group' : ''}`}>
+                    <div className="group-header">
+                      <span className="group-icon">{isConnection ? '🔗' : '🖥️'}</span>
+                      <span className="group-name">{techName}</span>
+                      <span className="group-count">{nodeThreats.length}</span>
+                    </div>
+                    <div className="group-threats">
+                      {nodeThreats.map(activeThreat => (
+                        <ThreatCard
+                          key={`${nodeId}-${activeThreat.threat.id}`}
+                          activeThreat={activeThreat}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              // Flat sorted list with deduplicated connection threats
+              <div className="threats-list">
+                {/* Component threats */}
+                {componentThreats.map(activeThreat => (
+                  <ThreatCard
+                    key={`${activeThreat.sourceNodeId}-${activeThreat.threat.id}`}
+                    activeThreat={activeThreat}
                   />
                 ))}
+
+                {/* Grouped connection threats */}
+                {groupedConnectionThreats.length > 0 && (
+                  <div className="connection-threats-section">
+                    <div className="section-divider">
+                      <span className="section-icon">🔗</span>
+                      <span className="section-label">Connection Threats</span>
+                    </div>
+                    {groupedConnectionThreats.map(groupedThreat => (
+                      <ConnectionThreatCard
+                        key={groupedThreat.threat.id}
+                        groupedThreat={groupedThreat}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Grouped zone threats */}
+                {groupedZoneThreats.length > 0 && (
+                  <div className="zone-threats-section">
+                    <div className="section-divider zone-section">
+                      <span className="section-icon">🔒</span>
+                      <span className="section-label">Network Zone Threats</span>
+                    </div>
+                    {groupedZoneThreats.map(groupedThreat => (
+                      <ZoneThreatCard
+                        key={groupedThreat.threat.id}
+                        groupedThreat={groupedThreat}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Grouped zone threats */}
-            {groupedZoneThreats.length > 0 && (
-              <div className="zone-threats-section">
-                <div className="section-divider zone-section">
-                  <span className="section-icon">🔒</span>
-                  <span className="section-label">Network Zone Threats</span>
-                </div>
-                {groupedZoneThreats.map(groupedThreat => (
-                  <ZoneThreatCard
-                    key={groupedThreat.threat.id}
-                    groupedThreat={groupedThreat}
+            {/* Mitigated threats, below all active threats */}
+            {filteredMitigatedThreats.length > 0 && (
+              <div className="mitigated-threats-section">
+                <button
+                  className="section-divider mitigated-section"
+                  onClick={() => setMitigatedExpanded(!mitigatedExpanded)}
+                  aria-expanded={mitigatedExpanded}
+                >
+                  <ChevronRight
+                    size={14}
+                    className={`section-chevron ${mitigatedExpanded ? 'expanded' : ''}`}
                   />
-                ))}
+                  <span className="section-label">Mitigated Threats</span>
+                  <span className="section-count">{filteredMitigatedThreats.length}</span>
+                </button>
+                {mitigatedExpanded && (
+                  <div className="threats-list">
+                    {mitigatedGroups.componentThreats.map(activeThreat => (
+                      <ThreatCard
+                        key={`${activeThreat.sourceNodeId}-${activeThreat.threat.id}`}
+                        activeThreat={activeThreat}
+                      />
+                    ))}
+                    {mitigatedGroups.groupedConnectionThreats.map(groupedThreat => (
+                      <ConnectionThreatCard
+                        key={groupedThreat.threat.id}
+                        groupedThreat={groupedThreat}
+                        mitigated
+                      />
+                    ))}
+                    {mitigatedGroups.groupedZoneThreats.map(groupedThreat => (
+                      <ZoneThreatCard
+                        key={groupedThreat.threat.id}
+                        groupedThreat={groupedThreat}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

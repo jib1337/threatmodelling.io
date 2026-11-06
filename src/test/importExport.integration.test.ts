@@ -240,6 +240,57 @@ describe('Import workflow', () => {
     expect(mitigations['rate-limiting'].reductionPercent).toBe(90);
   });
 
+  it('defaults hideMitigated to off for files saved before the option existed', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const { hideMitigated: _omitted, ...olderSettings } = DEFAULT_PATHWAY_MITIGATION_SETTINGS;
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        pathwayMitigationSettings: { ...olderSettings, enabled: true } as ThreatModel['pathwayMitigationSettings'],
+      }));
+    });
+    expect(result.current.pathwayMitigationSettings.hideMitigated).toBe(false);
+    expect(result.current.pathwayMitigationSettings.enabled).toBe(true);
+  });
+
+  it('round-trips hideMitigated through import', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        pathwayMitigationSettings: { ...DEFAULT_PATHWAY_MITIGATION_SETTINGS, hideMitigated: true },
+      }));
+    });
+    expect(result.current.pathwayMitigationSettings.hideMitigated).toBe(true);
+  });
+
+  it('does not recompute threats when only hideMitigated changes', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        nodes: [{ id: 'n1', technologyId: 'aws-ec2', position: { x: 0, y: 0 }, sensitivity: 'internal' }],
+      }));
+    });
+    const before = result.current.activeThreats;
+    expect(before.length).toBeGreaterThan(0);
+
+    act(() => {
+      result.current.updatePathwayMitigationSettings({
+        ...result.current.pathwayMitigationSettings,
+        hideMitigated: true,
+      });
+    });
+    expect(result.current.pathwayMitigationSettings.hideMitigated).toBe(true);
+    expect(result.current.activeThreats).toBe(before);
+
+    // A setting that does affect resolution still recomputes
+    act(() => {
+      result.current.updatePathwayMitigationSettings({
+        ...result.current.pathwayMitigationSettings,
+        enabled: !result.current.pathwayMitigationSettings.enabled,
+      });
+    });
+    expect(result.current.activeThreats).not.toBe(before);
+  });
+
   it('gracefully skips nodes whose technology ID does not resolve', async () => {
     const { result } = renderHook(() => useThreatModel(), { wrapper });
     await act(async () => {

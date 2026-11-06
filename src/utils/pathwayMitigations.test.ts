@@ -37,6 +37,7 @@ function buildSettings(
 ): PathwayMitigationSettings {
   return {
     enabled: masterEnabled,
+    hideMitigated: false,
     mitigations: {
       'ddos-protection': {
         enabled: !!enabledMitigations['ddos-protection'],

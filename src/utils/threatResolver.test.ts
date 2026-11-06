@@ -403,7 +403,7 @@ describe('resolveActiveThreats', () => {
     expect(result[0].riskScore).toBe(16);
   });
 
-  it('removes a threat entirely when pathway mitigation mode is "remove"', () => {
+  it('keeps a threat flagged as mitigated, at its unmitigated score, when pathway mitigation mode is "remove"', () => {
     const tech = makeTech({ id: 'aws-ec2' });
     const wafTech = makeTech({ id: 'aws-waf', name: 'AWS WAF' });
     vi.mocked(getTechnologyById).mockImplementation(id => (id === 'aws-waf' ? wafTech : tech));
@@ -415,6 +415,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
+      hideMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: false, mode: 'reduce', reductionPercent: 50 },
         'waf-protection': { enabled: true, mode: 'remove', reductionPercent: 50 },
@@ -429,7 +430,13 @@ describe('resolveActiveThreats', () => {
       settings,
     );
     // The WAF is upstream of the app; injection-attack mitigated in "remove" mode
-    expect(result.find(r => r.threat.id === 'injection-attack')).toBeUndefined();
+    const threat = result.find(r => r.threat.id === 'injection-attack');
+    expect(threat).toBeDefined();
+    expect(threat?.pathwayMitigatedBy?.mode).toBe('remove');
+    expect(threat?.pathwayMitigatedBy?.mitigatingTechId).toBe('aws-waf');
+    expect(threat?.pathwayMitigatedBy?.reductionPercent).toBeUndefined();
+    // high (3) × restricted (4) = 12, not reduced
+    expect(threat?.riskScore).toBe(12);
   });
 
   it('reduces (but does not remove) risk when pathway mitigation mode is "reduce"', () => {
@@ -444,6 +451,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
+      hideMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: true, mode: 'reduce', reductionPercent: 50 },
         'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
@@ -477,6 +485,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
+      hideMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: true, mode: 'reduce', reductionPercent: 50 },
         'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
@@ -509,6 +518,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
+      hideMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: true, mode: 'remove', reductionPercent: 50 },
         'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },

@@ -11,6 +11,8 @@ import {
   DATA_SENSITIVITY_LABELS,
   PROVIDER_LABELS,
   THREAT_SEVERITY_VALUES,
+  partitionMitigatedThreats,
+  describeThreatMitigation,
 } from '../data/schema';
 import { buildControlKey } from './controlFingerprint';
 
@@ -131,6 +133,24 @@ interface ThreatGroup {
   // Kind of threat grouping — controls which key scope to use when looking up
   // implementation status.
   kind: 'component' | 'connection' | 'zone';
+  // Descriptions of what mitigates this threat (pathway protection or
+  // encryption). Each is emitted as an extra control block.
+  mitigations: Set<string>;
+  // True when every instance of the threat is mitigated, so the mitigation
+  // controls are implemented. False when some instances are still active.
+  fullyMitigated: boolean;
+  // For partially mitigated threats: "<affected> (by <mitigation>)" notes for
+  // the mitigated instances, which are otherwise left out of the group.
+  mitigatedOn: Set<string>;
+}
+
+// Control description for a mitigated threat instance, e.g.
+// "Upstream protection: AWS WAF (WAF Protection)".
+function mitigationControlDescription(at: ActiveThreat): string {
+  const description = describeThreatMitigation(at) ?? '';
+  return at.pathwayMitigatedBy?.mode === 'remove'
+    ? `Upstream protection: ${description}`
+    : `Connection protection: ${description}`;
 }
 
 function severityRank(s: ThreatSeverity): number {
@@ -140,12 +160,31 @@ function severityRank(s: ThreatSeverity): number {
 function groupThreats(
   threats: ActiveThreat[],
   assetNameByNodeId: Map<string, string>,
+  mitigatedThreats: ActiveThreat[] = [],
 ): ThreatGroup[] {
   const map = new Map<string, ThreatGroup>();
 
-  for (const at of threats) {
+  // Active threats first, so any group that exists when a mitigated instance
+  // arrives is known to be partially mitigated.
+  const activeCount = threats.length;
+  const allThreats = [...threats, ...mitigatedThreats];
+
+  for (const [index, at] of allThreats.entries()) {
     const key = at.threat.id;
+    const isMitigated = index >= activeCount;
     let group = map.get(key);
+
+    if (isMitigated && group && !group.fullyMitigated) {
+      // Partially mitigated: note the mitigated instance, but keep it out of
+      // the affected sets and control resolution, which describe active risk.
+      const affected = at.isConnectionThreat && at.connectionInfo
+        ? `${at.connectionInfo.sourceNodeName} -> ${at.connectionInfo.targetNodeName}`
+        : at.sourceTechName;
+      group.mitigatedOn.add(`${affected} (by ${describeThreatMitigation(at)})`);
+      group.mitigations.add(mitigationControlDescription(at));
+      continue;
+    }
+
     if (!group) {
       const kind: ThreatGroup['kind'] = at.isZoneThreat
         ? 'zone'
@@ -164,8 +203,15 @@ function groupThreats(
         techMitigations: new Map(),
         componentNodeIds: new Set(),
         kind,
+        mitigations: new Set(),
+        fullyMitigated: isMitigated,
+        mitigatedOn: new Set(),
       };
       map.set(key, group);
+    }
+
+    if (isMitigated) {
+      group.mitigations.add(mitigationControlDescription(at));
     }
 
     if (at.isZoneThreat && at.zoneInfo) {
@@ -409,6 +455,11 @@ function renderThreats(
       if (group.contexts.size > 0) {
         contextParts.push(`\nContext: ${Array.from(group.contexts).join(' | ')}`);
       }
+      if (group.fullyMitigated) {
+        contextParts.push(`\nMitigated: ${Array.from(group.mitigations).join('; ')}`);
+      } else if (group.mitigatedOn.size > 0) {
+        contextParts.push(`\nMitigated on: ${Array.from(group.mitigatedOn).join('; ')}`);
+      }
       const fullDesc = contextParts.join('\n');
 
       const impactSet = new Set<'Confidentiality' | 'Integrity' | 'Availability'>();
@@ -462,6 +513,16 @@ function renderThreats(
           lines.push(`    }`);
           return lines.join('\n');
         })
+        .concat(
+          // Mitigations are implemented only when they cover every instance
+          Array.from(group.mitigations).map((description, idx) => [
+            `    control ${hclString(`mitigation-${idx + 1}`)} {`,
+            `      description = ${hclString(description)}`,
+            `      implemented = ${group.fullyMitigated ? 'true' : 'false'}`,
+            `      risk_reduction = ${reduction}`,
+            `    }`,
+          ].join('\n')),
+        )
         .join('\n\n');
 
       const parts: string[] = [];
@@ -594,8 +655,10 @@ export function generateThreatclDocument(
   threats: ActiveThreat[],
   boundaries: Node<ZoneNodeData>[],
   implementedControls: Record<string, true> = {},
+  hideMitigated = false,
 ): string {
-  const liveThreats = threats.filter(t => !t.mitigatedBy);
+  const { active: liveThreats, mitigated: mitigatedThreats } =
+    partitionMitigatedThreats(threats, hideMitigated);
 
   const sections: string[] = [];
   sections.push(renderHeader(modelName));
@@ -626,7 +689,7 @@ export function generateThreatclDocument(
     sections.push(exclusions);
   }
 
-  const groups = groupThreats(liveThreats, assetNameByNodeId);
+  const groups = groupThreats(liveThreats, assetNameByNodeId, mitigatedThreats);
   const threatBlocks = renderThreats(groups, implementedControls);
   if (threatBlocks) {
     sections.push('');
@@ -650,8 +713,9 @@ export function exportThreatcl(
   threats: ActiveThreat[],
   boundaries: Node<ZoneNodeData>[],
   implementedControls: Record<string, true> = {},
+  hideMitigated = false,
 ): void {
-  const hcl = generateThreatclDocument(modelName, nodes, edges, threats, boundaries, implementedControls);
+  const hcl = generateThreatclDocument(modelName, nodes, edges, threats, boundaries, implementedControls, hideMitigated);
   const blob = new Blob([hcl], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

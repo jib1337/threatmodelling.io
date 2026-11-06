@@ -1,5 +1,5 @@
 import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType } from '../data/schema';
-import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS } from '../data/schema';
+import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation } from '../data/schema';
 import type { Node, Edge } from '@xyflow/react';
 import { buildControlKey } from './controlFingerprint';
 
@@ -114,10 +114,6 @@ function getRiskDistribution(threats: ActiveThreat[]): Record<RiskLevel, number>
   return distribution;
 }
 
-function filterMitigatedThreats(threats: ActiveThreat[]): ActiveThreat[] {
-  return threats.filter(t => !t.mitigatedBy);
-}
-
 function generateHeader(modelName: string): string {
   return `# Threat Model Report: ${modelName}
 
@@ -127,9 +123,13 @@ function generateHeader(modelName: string): string {
 function generateOverview(
   nodes: Node<TechNodeData>[],
   edges: Edge[],
-  threats: ActiveThreat[]
+  threats: ActiveThreat[],
+  mitigatedThreats: ActiveThreat[] = [],
 ): string {
   const uniqueThreats = new Set(threats.map(t => t.threat.id)).size;
+  const mitigatedRow = mitigatedThreats.length > 0
+    ? `| Mitigated Threats | ${mitigatedThreats.length} |\n`
+    : '';
 
   return `## Overview
 
@@ -139,7 +139,7 @@ function generateOverview(
 | Data Flows | ${edges.length} |
 | Total Threats | ${threats.length} |
 | Unique Threats | ${uniqueThreats} |
-
+${mitigatedRow}
 `;
 }
 
@@ -344,6 +344,29 @@ function groupZoneThreats(threats: ActiveThreat[]): GroupedZoneThreat[] {
     .sort((a, b) => b.maxRiskScore - a.maxRiskScore);
 }
 
+function generateMitigatedThreats(threats: ActiveThreat[]): string {
+  if (threats.length === 0) {
+    return '';
+  }
+
+  const sorted = [...threats].sort((a, b) => b.riskScore - a.riskScore);
+
+  let md = `## Mitigated Threats
+
+The following threats are mitigated by upstream protections or connection encryption and are not counted above. Scores are shown as they would be without the mitigation.
+
+| Threat | Affects | Unmitigated Score | Mitigated By |
+|--------|---------|-------------------|--------------|
+`;
+
+  sorted.forEach(t => {
+    const emoji = RISK_EMOJI[t.riskLevel];
+    md += `| ${escapeMarkdown(t.threat.name)} | ${escapeMarkdown(t.sourceTechName)} | ${t.riskScore} (${emoji} ${RISK_LEVEL_LABELS[t.riskLevel]}) | ${escapeMarkdown(describeThreatMitigation(t) ?? '')} |\n`;
+  });
+
+  return md + '\n';
+}
+
 function generateOutOfScopeSection(nodes: Node<TechNodeData>[]): string {
   const excludedNodes = nodes.filter(node => node.data.threatsDisabled);
 
@@ -453,31 +476,42 @@ function downloadMarkdown(content: string, modelName: string): void {
   URL.revokeObjectURL(url);
 }
 
+export function buildMarkdownReport(
+  modelName: string,
+  nodes: Node<TechNodeData>[],
+  edges: Edge[],
+  threats: ActiveThreat[],
+  implementedControls: Record<string, true> = {},
+  hideMitigated = false,
+): string {
+  // Mitigated threats are reported in their own section (or omitted when hidden)
+  const { active: filteredThreats, mitigated: mitigatedThreats } =
+    partitionMitigatedThreats(threats, hideMitigated);
+
+  const generatedAt = formatDate(new Date());
+
+  return [
+    generateHeader(modelName),
+    generateOverview(nodes, edges, filteredThreats, mitigatedThreats),
+    generateRiskDistribution(filteredThreats),
+    generateTopThreats(filteredThreats),
+    generateComponentsSummary(nodes, edges, filteredThreats),
+    generateComponentDetails(nodes, edges, filteredThreats, implementedControls),
+    generateZoneThreatDetails(filteredThreats, implementedControls),
+    generateMitigatedThreats(mitigatedThreats),
+    generateOutOfScopeSection(nodes),
+    generateFooter(generatedAt),
+  ].join('');
+}
+
 export async function generateMarkdownReport(
   modelName: string,
   nodes: Node<TechNodeData>[],
   edges: Edge[],
   threats: ActiveThreat[],
   implementedControls: Record<string, true> = {},
+  hideMitigated = false,
 ): Promise<void> {
-  // Filter out mitigated threats (consistent with PDF export)
-  const filteredThreats = filterMitigatedThreats(threats);
-
-  const generatedAt = formatDate(new Date());
-
-  // Build the markdown document
-  const markdown = [
-    generateHeader(modelName),
-    generateOverview(nodes, edges, filteredThreats),
-    generateRiskDistribution(filteredThreats),
-    generateTopThreats(filteredThreats),
-    generateComponentsSummary(nodes, edges, filteredThreats),
-    generateComponentDetails(nodes, edges, filteredThreats, implementedControls),
-    generateZoneThreatDetails(filteredThreats, implementedControls),
-    generateOutOfScopeSection(nodes),
-    generateFooter(generatedAt),
-  ].join('');
-
-  // Trigger download
+  const markdown = buildMarkdownReport(modelName, nodes, edges, threats, implementedControls, hideMitigated);
   downloadMarkdown(markdown, modelName);
 }

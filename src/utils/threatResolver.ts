@@ -146,11 +146,6 @@ export function resolveActiveThreats(
           pathwayMitigationSettings
         );
 
-        // If mode is 'remove', skip this threat entirely
-        if (pathwayMitigation.isMitigated && pathwayMitigation.mode === 'remove') {
-          return; // Skip to next threat
-        }
-
         // For pathway threats, consider downstream sensitivity
         let effectiveSensitivity = nodeSensitivity;
         let isEscalated = false;
@@ -192,12 +187,12 @@ export function resolveActiveThreats(
           riskLevel: getRiskLevel(riskScore),
           ...(isEscalated && { isEscalated, effectiveSensitivity }),
           ...(boundaryMultiplier !== 1.0 && { zoneMultiplier: boundaryMultiplier }),
-          ...(pathwayMitigation.isMitigated && pathwayMitigation.mode === 'reduce' && {
+          ...(pathwayMitigation.isMitigated && {
             pathwayMitigatedBy: {
               mitigationType: pathwayMitigation.mitigationType!,
               mitigatingTechId: pathwayMitigation.mitigatingTechId!,
               mitigatingTechName: pathwayMitigation.mitigatingTechName!,
-              mode: pathwayMitigation.mode,
+              mode: pathwayMitigation.mode!,
               reductionPercent: pathwayMitigation.reductionPercent,
             },
           }),
@@ -267,11 +262,6 @@ export function resolveActiveThreats(
             pathwayMitigationSettings
           );
 
-          // If mode is 'remove', skip this threat entirely
-          if (pathwayMitigation.isMitigated && pathwayMitigation.mode === 'remove') {
-            return; // Skip to next threat
-          }
-
           // Check if this threat is mitigated by connection security
           const mitigatedBy = getConnectionMitigation(threat, sourceTech, targetTech);
 
@@ -308,12 +298,12 @@ export function resolveActiveThreats(
             riskLevel: getRiskLevel(riskScore),
             ...(mitigatedBy && { mitigatedBy }),
             ...(boundaryMultiplier !== 1.0 && { zoneMultiplier: boundaryMultiplier }),
-            ...(pathwayMitigation.isMitigated && pathwayMitigation.mode === 'reduce' && {
+            ...(pathwayMitigation.isMitigated && {
               pathwayMitigatedBy: {
                 mitigationType: pathwayMitigation.mitigationType!,
                 mitigatingTechId: pathwayMitigation.mitigatingTechId!,
                 mitigatingTechName: pathwayMitigation.mitigatingTechName!,
-                mode: pathwayMitigation.mode,
+                mode: pathwayMitigation.mode!,
                 reductionPercent: pathwayMitigation.reductionPercent,
               },
             }),

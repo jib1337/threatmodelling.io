@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import {
   Undo2,
@@ -19,13 +19,14 @@ import {
   Lock,
   Settings,
 } from 'lucide-react';
-import { useModel, useDiagramState, useHistory, useThreats, useDrawing } from '../../context/ThreatModelContext';
+import { useModel, useDiagramState, useHistory, useThreats, useDrawing, useSettings } from '../../context/ThreatModelContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useFileOperations } from '../../hooks/useFileOperations';
 import { useMobilePanel } from '../App';
 import { generateMarkdownReport } from '../../utils/markdownExport';
 import { exportThreatcl } from '../../utils/threatclExport';
 import { showToast } from '../../utils/toast';
+import { isThreatMitigated } from '../../data/schema';
 import AboutModal from '../AboutModal/AboutModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
 import SupportModal from '../SupportModal/SupportModal';
@@ -41,6 +42,11 @@ export default function Toolbar() {
   const { nodes, edges, boundaries } = useDiagramState();
   const { canUndo, canRedo, undo, redo } = useHistory();
   const { activeThreats, implementedControls } = useThreats();
+  const { pathwayMitigationSettings: { hideMitigated } } = useSettings();
+  const activeThreatCount = useMemo(
+    () => activeThreats.filter(t => !isThreatMitigated(t)).length,
+    [activeThreats],
+  );
   const { drawingZoneType, startDrawingPublicZone, startDrawingPrivateZone, cancelDrawingMode } = useDrawing();
   const { theme, toggleTheme } = useTheme();
   const { exportToFile, importFromFile } = useFileOperations();
@@ -132,9 +138,9 @@ export default function Toolbar() {
       captureDiagramImage(),
       import('../../utils/pdfExport'),
     ]);
-    await generateExecutiveSummary(modelName, nodes, edges, activeThreats, diagramImage);
+    await generateExecutiveSummary(modelName, nodes, edges, activeThreats, diagramImage, hideMitigated);
     showToast('PDF summary exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, captureDiagramImage]);
+  }, [modelName, nodes, edges, activeThreats, captureDiagramImage, hideMitigated]);
 
   const handleExportPdfFull = useCallback(async () => {
     setExportDropdownOpen(false);
@@ -142,21 +148,21 @@ export default function Toolbar() {
       captureDiagramImage(),
       import('../../utils/pdfExport'),
     ]);
-    await generateFullReport(modelName, nodes, edges, activeThreats, diagramImage, implementedControls);
+    await generateFullReport(modelName, nodes, edges, activeThreats, diagramImage, implementedControls, hideMitigated);
     showToast('PDF report exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, captureDiagramImage, implementedControls]);
+  }, [modelName, nodes, edges, activeThreats, captureDiagramImage, implementedControls, hideMitigated]);
 
   const handleExportMarkdown = useCallback(async () => {
     setExportDropdownOpen(false);
-    await generateMarkdownReport(modelName, nodes, edges, activeThreats, implementedControls);
+    await generateMarkdownReport(modelName, nodes, edges, activeThreats, implementedControls, hideMitigated);
     showToast('Markdown report exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, implementedControls]);
+  }, [modelName, nodes, edges, activeThreats, implementedControls, hideMitigated]);
 
   const handleExportThreatcl = useCallback(() => {
     setExportDropdownOpen(false);
-    exportThreatcl(modelName, nodes, edges, activeThreats, boundaries, implementedControls);
+    exportThreatcl(modelName, nodes, edges, activeThreats, boundaries, implementedControls, hideMitigated);
     showToast('threatcl file exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, boundaries, implementedControls]);
+  }, [modelName, nodes, edges, activeThreats, boundaries, implementedControls, hideMitigated]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -245,7 +251,7 @@ export default function Toolbar() {
           title="View Threats"
         >
           <Shield size={16} />
-          <span className="badge">{activeThreats.length}</span>
+          <span className="badge">{activeThreatCount}</span>
         </button>
         <button
           className="toolbar-button mobile-only"

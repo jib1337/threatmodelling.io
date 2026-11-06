@@ -1,5 +1,5 @@
 import { useState, useCallback, memo } from 'react';
-import { Lock, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { Lock, ArrowUp, ArrowDown, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { ActiveThreat, ThreatSeverity } from '../../data/schema';
 import {
   STRIDE_LABELS,
@@ -7,6 +7,8 @@ import {
   DATA_SENSITIVITY_LABELS,
   RISK_LEVEL_LABELS,
   PATHWAY_MITIGATION_LABELS,
+  isThreatMitigated,
+  describeThreatMitigation,
 } from '../../data/schema';
 import { useActions, useThreats } from '../../context/ThreatModelContext';
 import { buildControlKey } from '../../utils/controlFingerprint';
@@ -21,6 +23,9 @@ export default memo(function ThreatCard({ activeThreat }: ThreatCardProps) {
   const { threat, sourceNodeId, sourceTechName, sourceTechnologyId, overriddenSeverity, riskLevel, riskScore, sensitivity, isEscalated, effectiveSensitivity, zoneMultiplier, context, pathwayMitigatedBy, techMitigations } = activeThreat;
   const { setSeverityOverride, setControlImplemented } = useActions();
   const { implementedControls } = useThreats();
+  const isMitigated = isThreatMitigated(activeThreat);
+  const mitigationDescription = describeThreatMitigation(activeThreat);
+  const isReduced = pathwayMitigatedBy?.mode === 'reduce';
 
   const displaySeverity = overriddenSeverity ?? threat.severity;
   const overrideKey = sourceTechnologyId ? `${sourceTechnologyId}::${threat.id}` : '';
@@ -39,7 +44,7 @@ export default memo(function ThreatCard({ activeThreat }: ThreatCardProps) {
   }, [overrideKey, setSeverityOverride]);
 
   return (
-    <div className={`threat-card ${isExpanded ? 'expanded' : ''} risk-${riskLevel}`}>
+    <div className={`threat-card ${isExpanded ? 'expanded' : ''} risk-${riskLevel} ${isMitigated ? 'mitigated' : ''}`}>
       <button
         className="threat-card-header"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -57,7 +62,12 @@ export default memo(function ThreatCard({ activeThreat }: ThreatCardProps) {
                 <Lock size={12} strokeWidth={2.5} />
               </span>
             )}
-            {pathwayMitigatedBy && (
+            {isMitigated && (
+              <span className="mitigated-indicator" title={`Mitigated by ${mitigationDescription}`}>
+                <ShieldCheck size={12} strokeWidth={2.5} />
+              </span>
+            )}
+            {isReduced && pathwayMitigatedBy && (
               <span
                 className="pathway-mitigation-indicator"
                 title={`Mitigated by ${pathwayMitigatedBy.mitigatingTechName} (${PATHWAY_MITIGATION_LABELS[pathwayMitigatedBy.mitigationType]}) - ${pathwayMitigatedBy.reductionPercent}% reduction`}
@@ -136,7 +146,13 @@ export default memo(function ThreatCard({ activeThreat }: ThreatCardProps) {
                   </span>
                 </div>
               )}
-              {pathwayMitigatedBy && (
+              {isMitigated && (
+                <div className="risk-item pathway-mitigation-note">
+                  <span className="risk-label">Mitigated:</span>
+                  <span className="pathway-mitigation-tag">{mitigationDescription}</span>
+                </div>
+              )}
+              {isReduced && pathwayMitigatedBy && (
                 <div className="risk-item pathway-mitigation-note">
                   <span className="risk-label">Mitigated:</span>
                   <span className="pathway-mitigation-tag">
