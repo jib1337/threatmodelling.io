@@ -65,7 +65,9 @@ function createMockDoc(): MockPDFDoc {
 }
 
 vi.mock('jspdf', () => ({
-  default: vi.fn().mockImplementation(() => {
+  // `function`, not an arrow: the code under test calls `new jsPDF(...)`, and
+  // Vitest 4+ only lets a mock be constructed when its implementation can be.
+  default: vi.fn().mockImplementation(function () {
     lastDoc = createMockDoc();
     return lastDoc;
   }),
