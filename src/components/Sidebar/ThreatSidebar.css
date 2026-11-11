@@ -80,7 +80,7 @@
 
 .risk-summary {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
@@ -94,7 +94,8 @@
   color: var(--on-risk);
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  background: var(--chip);
+  transition: opacity 0.2s, box-shadow 0.15s;
 }
 
 .risk-summary-item:hover {
@@ -102,25 +103,24 @@
 }
 
 .risk-summary-item.active {
-  transform: scale(1.05);
-  box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 4px currentColor;
+  box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 4px var(--chip);
 }
 
 .risk-summary-item.critical {
-  background: var(--risk-critical);
+  --chip: var(--risk-critical);
 }
 
 .risk-summary-item.high {
-  background: var(--risk-high);
+  --chip: var(--risk-high);
 }
 
 .risk-summary-item.medium {
-  background: var(--risk-medium);
+  --chip: var(--risk-medium);
   color: var(--on-risk-medium);
 }
 
 .risk-summary-item.low {
-  background: var(--risk-low);
+  --chip: var(--risk-low);
 }
 
 .controls-row {
