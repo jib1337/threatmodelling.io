@@ -26,20 +26,20 @@
 }
 
 .drawing-preview-rect {
-  fill: rgba(128, 128, 128, 0.1);
+  fill: color-mix(in srgb, var(--text-secondary) 10%, transparent);
   stroke: var(--border-color);
   stroke-width: 1;
   stroke-dasharray: 4 2;
 }
 
 .drawing-preview-rect.public {
-  fill: rgba(249, 115, 22, 0.1);
-  stroke: #f97316;
+  fill: color-mix(in srgb, var(--exposed) 10%, transparent);
+  stroke: var(--exposed);
 }
 
 .drawing-preview-rect.private {
-  fill: rgba(82, 179, 255, 0.1);
-  stroke: #52b3ff;
+  fill: color-mix(in srgb, var(--protect) 10%, transparent);
+  stroke: var(--protect-ink);
 }
 
 .diagram-canvas .react-flow__background {
@@ -129,8 +129,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
   margin-bottom: 10px;
 }
 
@@ -160,21 +159,21 @@
 }
 
 .toolbox-button.boundary-public {
-  border-color: rgba(249, 115, 22, 0.4);
+  border-color: color-mix(in srgb, var(--exposed) 40%, transparent);
 }
 
 .toolbox-button.boundary-public:hover {
-  border-color: #f97316;
-  background: rgba(249, 115, 22, 0.1);
+  border-color: var(--exposed);
+  background: color-mix(in srgb, var(--exposed) 10%, transparent);
 }
 
 .toolbox-button.boundary-private {
-  border-color: rgba(82, 179, 255, 0.4);
+  border-color: color-mix(in srgb, var(--protect) 40%, transparent);
 }
 
 .toolbox-button.boundary-private:hover {
-  border-color: #52b3ff;
-  background: rgba(82, 179, 255, 0.1);
+  border-color: var(--protect-ink);
+  background: color-mix(in srgb, var(--protect) 10%, transparent);
 }
 
 .toolbox-icon {
@@ -187,15 +186,15 @@
 
 /* Active state when in drawing mode */
 .toolbox-button.boundary-public.active {
-  border-color: #f97316;
-  background: rgba(249, 115, 22, 0.2);
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+  border-color: var(--exposed);
+  background: color-mix(in srgb, var(--exposed) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--exposed) 30%, transparent);
 }
 
 .toolbox-button.boundary-private.active {
-  border-color: #52b3ff;
-  background: rgba(82, 179, 255, 0.2);
-  box-shadow: 0 0 0 2px rgba(82, 179, 255, 0.3);
+  border-color: var(--protect-ink);
+  background: color-mix(in srgb, var(--protect) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--protect) 30%, transparent);
 }
 
 /* Helper text for drawing mode */
@@ -392,7 +391,7 @@
     gap: 12px;
     align-items: center;
     z-index: 20;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px var(--shadow-color);
   }
 
   .mobile-drawing-indicator span {

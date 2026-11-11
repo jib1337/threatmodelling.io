@@ -16,11 +16,10 @@
 
 .palette-header h2 {
   margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 650;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .search-input {
@@ -103,31 +102,31 @@
 
 /* Provider accent borders */
 .provider-header.provider-aws {
-  border-left: 3px solid #ff9900;
+  border-left: 3px solid var(--provider-aws);
 }
 
 .provider-header.provider-gcp {
-  border-left: 3px solid #42BFF4;
+  border-left: 3px solid var(--provider-gcp);
 }
 
 .provider-header.provider-azure {
-  border-left: 3px solid #0078d4;
+  border-left: 3px solid var(--provider-azure);
 }
 
 .provider-header.provider-self-hosted {
-  border-left: 3px solid #6b7280;
+  border-left: 3px solid var(--provider-self-hosted);
 }
 
 .provider-header.provider-saas {
-  border-left: 3px solid #e91e8c;
+  border-left: 3px solid var(--provider-saas);
 }
 
 .provider-header.provider-actor {
-  border-left: 3px solid #9333ea;
+  border-left: 3px solid var(--provider-actor);
 }
 
 .provider-header.provider-custom {
-  border-left: 3px solid #10b981;
+  border-left: 3px solid var(--provider-custom);
 }
 
 /* Custom section */
@@ -142,10 +141,10 @@
   align-items: center;
   gap: 3px;
   padding: 2px 8px 2px 5px;
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   border-radius: 4px;
-  background: rgba(16, 185, 129, 0.08);
-  color: #10b981;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -154,21 +153,10 @@
 }
 
 .custom-add-button:hover {
-  border-color: #10b981;
-  background: rgba(16, 185, 129, 0.18);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-/* Light mode: solid fill so the call-to-action reads against the light palette background */
-:root.light-mode .custom-add-button {
-  background: #10b981;
-  color: #ffffff;
-  border-color: #10b981;
-}
-
-:root.light-mode .custom-add-button:hover {
-  background: #0a7552;
-  border-color: #0a7552;
-}
 
 .custom-tech-item {
   display: flex;
@@ -177,7 +165,7 @@
 }
 
 .custom-tech-item:hover {
-  border-left-color: #10b981;
+  border-left-color: var(--provider-custom);
 }
 
 .custom-tech-item-icon {
@@ -209,7 +197,7 @@
 
 .custom-tech-delete:hover {
   color: var(--accent-red);
-  background: rgba(218, 54, 51, 0.1);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .tech-list-loading {
@@ -286,7 +274,7 @@
 }
 
 .actor-item:hover {
-  border-left-color: #9333ea;
+  border-left-color: var(--provider-actor);
 }
 
 .actor-item-icon {

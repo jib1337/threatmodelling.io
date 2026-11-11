@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { NodeResizer, type NodeProps, type Node } from '@xyflow/react';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, X } from 'lucide-react';
 import type { ZoneNodeData, NetworkZone } from '../../data/schema';
 import { ZONE_NETWORK_TYPE_LABELS } from '../../data/schema';
 import { useActions } from '../../context/ThreatModelContext';
@@ -138,8 +138,9 @@ function BoundaryNode({ id, data, selected }: NodeProps<BoundaryNodeType>) {
             className="boundary-delete-button"
             onClick={handleDelete}
             title="Remove boundary"
+            aria-label="Remove boundary"
           >
-            &times;
+            <X size={13} strokeWidth={2.5} aria-hidden="true" />
           </button>
         </div>
       </div>

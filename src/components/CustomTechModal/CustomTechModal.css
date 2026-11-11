@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 40px var(--shadow-color);
 }
 
 .custom-tech-modal-close {
@@ -93,8 +93,7 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .custom-tech-field input[type="text"] {
@@ -182,8 +181,7 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .threat-selection-header {
@@ -266,7 +264,7 @@
 }
 
 .threat-list-item.selected {
-  background: rgba(47, 129, 247, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .threat-list-item input[type="checkbox"] {
@@ -297,30 +295,29 @@
 .threat-list-item-severity {
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-stretch: var(--stretch-label);
   padding: 1px 5px;
   border-radius: 3px;
 }
 
 .threat-list-item-severity.severity-critical {
-  color: #fca5a5;
-  background: rgba(185, 28, 28, 0.2);
+  color: var(--risk-critical-ink);
+  background: color-mix(in srgb, var(--risk-critical) var(--tint-strength), transparent);
 }
 
 .threat-list-item-severity.severity-high {
-  color: #fca5a5;
-  background: rgba(218, 54, 51, 0.2);
+  color: var(--risk-high-ink);
+  background: color-mix(in srgb, var(--risk-high) var(--tint-strength), transparent);
 }
 
 .threat-list-item-severity.severity-medium {
-  color: #fcd34d;
-  background: rgba(210, 153, 34, 0.2);
+  color: var(--risk-medium-ink);
+  background: color-mix(in srgb, var(--risk-medium) var(--tint-strength), transparent);
 }
 
 .threat-list-item-severity.severity-low {
-  color: #93c5fd;
-  background: rgba(47, 129, 247, 0.2);
+  color: var(--risk-low-ink);
+  background: color-mix(in srgb, var(--risk-low) var(--tint-strength), transparent);
 }
 
 .threat-list-item-stride {
@@ -364,8 +361,8 @@
   padding: 8px 20px;
   border: none;
   border-radius: 6px;
-  background: #10b981;
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -373,7 +370,7 @@
 }
 
 .custom-tech-create-button:hover {
-  background: #059669;
+  background: color-mix(in srgb, var(--accent) 85%, var(--text-primary));
 }
 
 .custom-tech-create-button:disabled {

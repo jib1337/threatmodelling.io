@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -21,7 +21,7 @@
   max-height: 80vh;
   overflow-y: auto;
   position: relative;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 40px var(--shadow-color);
   padding: 20px 24px;
 }
 
@@ -73,7 +73,7 @@
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
+  font-stretch: var(--stretch-label);
   letter-spacing: 0.05em;
   color: var(--text-secondary);
 }

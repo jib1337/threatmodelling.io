@@ -2,6 +2,7 @@ import { useCallback, useRef, useMemo, useState, useEffect, type DragEvent } fro
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   ControlButton,
   MiniMap,
@@ -60,8 +61,9 @@ export default function DiagramCanvas() {
   const { theme } = useTheme();
   // Allow less precise pointer interactions on mobile devices (e.g., larger connection radius for touch)
   const isCoarsePointer = useMediaQuery('(pointer: coarse)');
-  // Must match --edge-color in theme.css so edge strokes and arrow markers agree
-  const edgeColor = useMemo(() => theme === 'light' ? '#5b6672' : '#30363d', [theme]);
+  // Must match --edge-color in theme.css so edge strokes and arrow markers agree.
+  // A literal rather than var(): React Flow derives the marker's DOM id from it.
+  const edgeColor = useMemo(() => theme === 'light' ? '#3b4b8c' : '#30363d', [theme]);
 
   const edgeMarker = useMemo(() => ({
     type: MarkerType.ArrowClosed,
@@ -730,7 +732,9 @@ export default function DiagramCanvas() {
           markerEnd: edgeMarker,
         }}
       >
-        <Background color="var(--canvas-dot)" gap={20} size={1} />
+        {/* Drafting grid: minor lines match the 20px snap grid, major every 5 */}
+        <Background id="grid-minor" variant={BackgroundVariant.Lines} color="var(--canvas-grid-minor)" gap={20} lineWidth={1} />
+        <Background id="grid-major" variant={BackgroundVariant.Lines} color="var(--canvas-grid-major)" gap={100} lineWidth={1} />
         <Controls>
           <ControlButton
             onClick={() => setSnapToGrid(prev => !prev)}
@@ -783,27 +787,29 @@ export default function DiagramCanvas() {
                 // Handle boundary nodes
                 if (node.type === 'boundaryNode') {
                   const boundaryData = node.data as ZoneNodeData;
-                  return boundaryData.zoneType === 'private' ? '#52b3ff' : '#f97316';
+                  return boundaryData.zoneType === 'private' ? 'var(--protect)' : 'var(--exposed)';
                 }
                 // Handle tech nodes
                 const techData = node.data as TechNodeData;
                 const provider = techData?.technology?.provider;
                 switch (provider) {
                   case 'aws':
-                    return '#ff9900';
+                    return 'var(--provider-aws)';
                   case 'gcp':
-                    return '#42BFF4';
+                    return 'var(--provider-gcp)';
                   case 'azure':
-                    return '#0078d4';
+                    return 'var(--provider-azure)';
                   case 'saas':
-                    return '#e91e8c';
+                    return 'var(--provider-saas)';
                   case 'actor':
-                    return '#9333ea';
+                    return 'var(--provider-actor)';
+                  case 'custom':
+                    return 'var(--provider-custom)';
                   default:
-                    return '#6b7280';
+                    return 'var(--provider-self-hosted)';
                 }
               }}
-              maskColor={theme === 'light' ? 'rgba(87, 96, 106, 0.25)' : 'rgba(0, 0, 0, 0.8)'}
+              maskColor="var(--minimap-mask)"
               style={{ background: 'var(--bg-secondary)' }}
               className="minimap-panel"
             />

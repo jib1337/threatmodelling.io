@@ -5,7 +5,7 @@
 }
 
 .edge-label {
-  background: var(--bg-secondary);
+  background: var(--node-bg);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 4px 8px;
@@ -61,20 +61,17 @@
   height: 18px;
   border-radius: 50%;
   border: none;
-  background: var(--accent-red, #f85149);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
+  background: var(--danger);
+  color: var(--on-danger);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  padding-bottom: 2px;
   transition: transform 0.15s, background 0.15s;
 }
 
 .edge-delete-button:hover {
   transform: scale(1.1);
-  background: #ff6b6b;
+  background: var(--danger-hover);
 }

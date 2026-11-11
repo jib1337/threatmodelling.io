@@ -55,7 +55,7 @@ export default function ProviderIcon({ provider, size = 'medium', className = ''
   if (provider === 'custom') {
     return (
       <span className={`provider-icon-emoji provider-icon-${size} ${className}`}>
-        <Box size={ICON_SIZES[size]} color="#10b981" />
+        <Box size={ICON_SIZES[size]} color="var(--provider-custom)" />
       </span>
     );
   }

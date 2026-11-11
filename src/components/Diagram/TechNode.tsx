@@ -4,7 +4,7 @@ import type { TechNodeData, DataSensitivity } from '../../data/schema';
 import { PROVIDER_LABELS, DATA_SENSITIVITY_LABELS } from '../../data/schema';
 import { useActions } from '../../context/ThreatModelContext';
 import { isActor } from '../../data';
-import { Globe, Building2, Lock, Ban, type LucideIcon } from 'lucide-react';
+import { Globe, Building2, Lock, Ban, X, type LucideIcon } from 'lucide-react';
 import ProviderIcon from '../ProviderIcon';
 import ActorIcon from '../ActorIcon';
 import './TechNode.css';
@@ -59,8 +59,9 @@ function TechNode({ id, data, selected }: NodeProps<TechNodeType>) {
         className="delete-button"
         onClick={handleDelete}
         title="Remove from diagram"
+        aria-label="Remove from diagram"
       >
-        &times;
+        <X size={12} strokeWidth={2.75} aria-hidden="true" />
       </button>
 
       <div className="tech-node-content">

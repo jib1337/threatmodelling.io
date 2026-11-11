@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   z-index: 10;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+  box-shadow: -4px 0 12px var(--shadow-color);
 }
 
 .panel-header {
@@ -25,8 +25,7 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .close-button {
@@ -47,8 +46,8 @@
 
 .multi-select-notice {
   padding: 10px 16px;
-  background: var(--accent-blue);
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 12px;
   font-weight: 500;
   text-align: center;
@@ -75,8 +74,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
   margin-bottom: 6px;
 }
 
@@ -128,19 +126,19 @@
 }
 
 .sensitivity-select.sensitivity-public {
-  border-color: #238636;
+  border-color: var(--risk-low);
 }
 
 .sensitivity-select.sensitivity-internal {
-  border-color: #2f81f7;
+  border-color: var(--risk-medium);
 }
 
 .sensitivity-select.sensitivity-confidential {
-  border-color: #d29922;
+  border-color: var(--risk-high);
 }
 
 .sensitivity-select.sensitivity-restricted {
-  border-color: #da3633;
+  border-color: var(--risk-critical);
 }
 
 .sensitivity-description {
@@ -163,13 +161,13 @@
 }
 
 .boundary-status.boundary-private {
-  border-color: #52b3ff;
-  background: rgba(82, 179, 255, 0.1);
+  border-color: var(--protect-ink);
+  background: color-mix(in srgb, var(--protect) 10%, transparent);
 }
 
 .boundary-status.boundary-public {
-  border-color: #f97316;
-  background: rgba(249, 115, 22, 0.1);
+  border-color: var(--exposed);
+  background: color-mix(in srgb, var(--exposed) 10%, transparent);
 }
 
 .boundary-none-text {
@@ -197,7 +195,7 @@
 .boundary-benefit {
   margin-top: 6px;
   font-size: 11px;
-  color: #52b3ff;
+  color: var(--protect-ink);
   font-weight: 500;
 }
 
@@ -228,7 +226,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #f59e0b;
+  color: var(--risk-medium-ink);
   font-weight: 500;
 }
 
@@ -258,14 +256,15 @@
   left: 3px;
   width: 16px;
   height: 16px;
-  background: white;
+  background: var(--text-primary);
   border-radius: 50%;
   transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px var(--shadow-color);
 }
 
 .toggle-switch.on .toggle-knob {
   transform: translateX(18px);
+  background: var(--on-accent);
 }
 
 /* Custom Tech Actions */
@@ -311,7 +310,7 @@
 }
 
 .custom-tech-delete-button:hover {
-  background: rgba(218, 54, 51, 0.1);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   border-color: var(--accent-red);
   color: var(--accent-red);
 }

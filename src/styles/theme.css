@@ -1,41 +1,173 @@
-/* Dark mode theme variables (default) */
+/* ThreatModelling.io theme
+ *
+ *   dark  = neutral graphite ground (the app's original dark palette)
+ *   light = diazo whiteprint — blue-violet ink on cool vellum
+ *
+ * The canvas grid is the one decorative gesture. Everything else is quiet so
+ * that colour can carry meaning, and each hue family has exactly one job:
+ *
+ *   risk      critical → high → medium → low (also used for severity and
+ *             data sensitivity, which are the same 4-step scale)
+ *   accent    interaction: selection, focus, links, active inputs
+ *   protect   private zones, pathway mitigations, mitigated threats
+ *   exposed   public zones
+ *   provider  brand stripes on nodes and palette headers
+ *
+ * Don't reach for a hex value in a component stylesheet; add or reuse a token
+ * here. Translucent variants are derived with color-mix() from these tokens.
+ *
+ * DiagramCanvas.tsx keeps a copy of --edge-color for the SVG arrow marker
+ * (its id is derived from the colour string, so it can't take a var()).
+ */
+
+/* Dark: neutral graphite (default) */
 :root {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
+  color-scheme: dark;
+
+  /* Ground */
+  --bg-primary: #0d1117;      /* canvas */
+  --bg-secondary: #161b22;    /* panels, toolbar, nodes */
+  --bg-tertiary: #21262d;     /* inputs, cards, hover rows */
+  --bg-raised: #161b22;       /* modals, menus */
   --border-color: #30363d;
+  --border-strong: #8b949e;
+
+  /* Ink */
   --text-primary: #c9d1d9;
   --text-secondary: #8b949e;
-  --accent-blue: #58a6ff;
-  --accent-green: #3fb950;
-  --accent-red: #f85149;
-  --accent-yellow: #d29922;
-  --accent-purple: #a371f7;
-  --accent-pink: #f778ba;
+  --text-tertiary: #848d97;
+
+  /* Interaction */
+  --accent: #58a6ff;
+  --on-accent: #0d1117;
+
+  /* Diagram */
   --edge-color: #30363d;
-  --canvas-dot: #30363d;
+  --node-bg: #161b22;
+  --node-border: #30363d;
+  --canvas-grid-minor: rgba(139, 148, 158, 0.06);
+  --canvas-grid-major: rgba(139, 148, 158, 0.14);
+
+  /* Risk ramp: ink is text on a tinted ground */
+  --risk-critical-ink: #ff939a;
+  --risk-high-ink: #ffa47c;
+  --risk-medium-ink: #f2c662;
+  --risk-low-ink: #acc1d6;
+
+  /* Protective / exposed */
+  --protect: #2fae90;
+  --protect-ink: #56d4b4;
+  --exposed: #e88a3c;
+  --exposed-ink: #f7a965;
+
+  /* General-purpose hues (STRIDE, context notes, danger) */
+  --accent-red: #f57478;
+  --accent-yellow: #f2c662;
+  --accent-green: #56d4b4;
+  --accent-purple: #b6a0f7;
+  --accent-pink: #f290c8;
+
+  /* Providers */
+  --provider-self-hosted: #8b99aa;
+  --provider-actor: #ad79f2;
+  --provider-gcp: #42bff4;
+
+  /* Depth */
+  --scrim: rgba(0, 0, 0, 0.7);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --minimap-mask: rgba(0, 0, 0, 0.8);
+
+  /* Strength of tinted grounds (tags, notes) mixed from a token */
+  --tint-strength: 22%;
+  --tint-border-strength: 42%;
 }
 
-/* Light mode theme variables.
-   Cool "drafting paper" ramp: near-white panels over a softly tinted canvas,
-   soft ink for text with a genuine secondary tone for hierarchy, and graphite
-   (not black) for diagram edges. Accent hues stay saturated so provider icons
-   and severity colors carry the color. */
+/* Light: diazo whiteprint */
 :root.light-mode {
-  --bg-primary: #e8ebf0;
-  --bg-secondary: #fafbfd;
-  --bg-tertiary: #eef1f5;
-  --border-color: #d8dde4;
-  --text-primary: #24292f;
-  --text-secondary: #57606a;
-  --accent-blue: #0969da;
-  --accent-green: #1a7f37;
-  --accent-red: #cf222e;
-  --accent-yellow: #9a6700;
-  --accent-purple: #8250df;
-  --accent-pink: #bf3989;
-  --edge-color: #5b6672;
-  --canvas-dot: #adb6c2;
+  color-scheme: light;
+
+  --bg-primary: #e6ebf1;
+  --bg-secondary: #fbfcfd;
+  --bg-tertiary: #eef2f7;
+  --bg-raised: #ffffff;
+  --border-color: #cdd5e0;
+  --border-strong: #96a3b6;
+
+  --text-primary: #17203c;
+  --text-secondary: #485472;
+  --text-tertiary: #67728d;
+
+  --accent: #2f44c4;
+  --on-accent: #ffffff;
+
+  --edge-color: #3b4b8c;
+  --node-bg: #fbfcfd;
+  --node-border: #b7c1d2;
+  --canvas-grid-minor: rgba(47, 68, 196, 0.055);
+  --canvas-grid-major: rgba(47, 68, 196, 0.13);
+
+  --risk-critical-ink: #9c1a29;
+  --risk-high-ink: #a1380f;
+  --risk-medium-ink: #774e00;
+  --risk-low-ink: #41586f;
+
+  --protect: #12866b;
+  --protect-ink: #0a6f58;
+  --exposed: #c9661f;
+  --exposed-ink: #973f0c;
+
+  --accent-red: #b4232f;
+  --accent-yellow: #774e00;
+  --accent-green: #0a6f58;
+  --accent-purple: #6439c2;
+  --accent-pink: #a52d6c;
+
+  --provider-self-hosted: #6b7280;
+  --provider-actor: #9333ea;
+  --provider-gcp: #1a95d6;
+
+  --scrim: rgba(23, 32, 60, 0.4);
+  --shadow-color: rgba(23, 32, 60, 0.16);
+  --minimap-mask: rgba(72, 84, 114, 0.22);
+
+  --tint-strength: 13%;
+  --tint-border-strength: 48%;
+}
+
+/* Tokens that are the same in both modes */
+:root {
+  /* Solid risk fills. Medium is a light ochre, so it takes dark text;
+     the rest pass 4.5:1 with white. */
+  --risk-critical: #a51d2d;
+  --risk-high: #c8431c;
+  --risk-medium: #e0a22a;
+  --risk-low: #4f6780;
+  --on-risk: #ffffff;
+  --on-risk-medium: #241703;
+
+  --danger: #c42e36;
+  --danger-hover: #a51d2d;
+  --on-danger: #ffffff;
+
+  /* Brand stripes */
+  --provider-aws: #ff9900;
+  --provider-azure: #0078d4;
+  --provider-saas: #e91e8c;
+  --provider-custom: #10b981;
+
+  /* Legacy names, kept so existing selectors read correctly */
+  --accent-blue: var(--accent);
+  --canvas-dot: var(--canvas-grid-major);
+
+  /* Elevation */
+  --shadow-pop: 0 8px 24px var(--shadow-color);
+  --shadow-modal: 0 24px 56px var(--shadow-color);
+
+  /* Type */
+  --font-ui: 'Archivo Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --stretch-label: 88%; /* semi-condensed, for headings and dense labels */
 }
 
 /* Reset and base styles */
@@ -55,8 +187,8 @@ body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: var(--font-ui);
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg-primary);
@@ -70,6 +202,21 @@ body {
   width: 100%;
 }
 
+/* Headings in panels and modals: semi-condensed, sentence case */
+h1,
+h2,
+h3,
+h4 {
+  font-stretch: var(--stretch-label);
+  letter-spacing: 0;
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
@@ -77,7 +224,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -86,18 +233,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--border-strong);
 }
 
 /* Selection */
 ::selection {
-  background: var(--accent-blue);
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 /* Links */
 a {
-  color: var(--accent-blue);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -107,25 +254,37 @@ a:hover {
 
 /* Focus states */
 :focus-visible {
-  outline: 2px solid var(--accent-blue);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* Button reset */
-button {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
 }
 
-/* Input reset */
-input {
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
+/* Theme switch: crossfade the ground and ink instead of snapping */
+:root.theme-transition,
+:root.theme-transition *,
+:root.theme-transition *::before,
+:root.theme-transition *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease,
+    color 0.25s ease, fill 0.25s ease, stroke 0.25s ease !important;
 }
 
-/* React Flow overrides for dark theme */
+@media (prefers-reduced-motion: reduce) {
+  :root.theme-transition,
+  :root.theme-transition * {
+    transition: none !important;
+  }
+}
+
+/* React Flow */
 .react-flow__node {
   font-family: inherit;
 }
@@ -135,11 +294,11 @@ input {
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--accent-blue);
+  stroke: var(--accent);
 }
 
 .react-flow__connection-path {
-  stroke: var(--accent-blue);
+  stroke: var(--accent);
   stroke-dasharray: 5 5;
 }
 
@@ -149,9 +308,9 @@ input {
 }
 
 .react-flow__handle-connecting {
-  background: var(--accent-blue);
+  background: var(--accent);
 }
 
 .react-flow__handle-valid {
-  background: var(--accent-green);
+  background: var(--protect);
 }

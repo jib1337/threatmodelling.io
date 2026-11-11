@@ -2,7 +2,7 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
   type ReactNode,
@@ -29,8 +29,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'dark';
   });
 
-  // Apply theme class to document root
-  useEffect(() => {
+  // Apply theme class to document root before paint, so a saved light theme
+  // doesn't flash dark on load
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (theme === 'light') {
       root.classList.add('light-mode');
@@ -41,6 +42,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
+    // Crossfade ground and ink for the switch only (see .theme-transition in
+    // theme.css); leaving it on would slow every hover and selection change.
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+    window.setTimeout(() => root.classList.remove('theme-transition'), 300);
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
