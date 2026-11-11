@@ -666,14 +666,7 @@
   white-space: nowrap;
 }
 
-/* Severity, sensitivity and risk-level values (and the severity dropdown)
-   share one box so they line up in a column whatever the value, with the text
-   left-aligned. 96px fits the widest value, "Confidential", with room for the
-   dropdown chevron. Kept last so it wins over each chip's own padding. */
-.severity-tag,
-.sensitivity-tag,
-.risk-level-tag,
-.severity-selector {
+.threat-card :is(.severity-tag, .sensitivity-tag, .risk-level-tag, .severity-selector) {
   box-sizing: border-box;
   width: 96px;
   height: 22px;
@@ -689,10 +682,10 @@
 }
 
 /* Same left inset as the labels; the right padding clears the chevron */
-.severity-selector {
+.threat-card .severity-selector {
   padding: 0 16px 0 8px;
 }
 
-.severity-selector.severity-label {
+.threat-card .severity-selector.severity-label {
   padding: 0 8px;
 }
