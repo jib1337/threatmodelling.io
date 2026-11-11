@@ -108,10 +108,10 @@ export default memo(function ConnectionThreatCard({ groupedThreat, mitigated = f
                   onChange={handleSeverityChange}
                   onClick={e => e.stopPropagation()}
                 >
-                  <option value="low">{THREAT_SEVERITY_LABELS.low}</option>
-                  <option value="medium">{THREAT_SEVERITY_LABELS.medium}</option>
-                  <option value="high">{THREAT_SEVERITY_LABELS.high}</option>
                   <option value="critical">{THREAT_SEVERITY_LABELS.critical}</option>
+                  <option value="high">{THREAT_SEVERITY_LABELS.high}</option>
+                  <option value="medium">{THREAT_SEVERITY_LABELS.medium}</option>
+                  <option value="low">{THREAT_SEVERITY_LABELS.low}</option>
                 </select>
                 {overriddenSeverity && (
                   <button className="severity-reset" onClick={handleSeverityReset} title="Reset to default severity">

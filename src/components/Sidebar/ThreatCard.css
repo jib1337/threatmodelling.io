@@ -379,6 +379,7 @@
 .risk-level-tag {
   font-size: 11px;
   padding: 2px 8px;
+  border: 1px solid transparent;
   border-radius: 4px;
   font-weight: 600;
 }
@@ -663,4 +664,35 @@
   padding: 1px 6px;
   border-radius: 4px;
   white-space: nowrap;
+}
+
+/* Severity, sensitivity and risk-level values (and the severity dropdown)
+   share one box so they line up in a column whatever the value, with the text
+   left-aligned. 96px fits the widest value, "Confidential", with room for the
+   dropdown chevron. Kept last so it wins over each chip's own padding. */
+.severity-tag,
+.sensitivity-tag,
+.risk-level-tag,
+.severity-selector {
+  box-sizing: border-box;
+  width: 96px;
+  height: 22px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Same left inset as the labels; the right padding clears the chevron */
+.severity-selector {
+  padding: 0 16px 0 8px;
+}
+
+.severity-selector.severity-label {
+  padding: 0 8px;
 }
