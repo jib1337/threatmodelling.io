@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 40px var(--shadow-color);
 }
 
 .about-modal-close {
@@ -112,8 +112,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
   flex-shrink: 0;
 }
 
@@ -240,8 +239,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .risk-table table {
@@ -257,27 +255,27 @@
 
 .risk-table td:last-child {
   text-align: right;
-  font-family: monospace;
+  font-family: var(--font-mono);
   color: var(--text-primary);
 }
 
 .risk-table .risk-critical {
-  color: #b91c1c;
+  color: var(--risk-critical-ink);
   font-weight: 600;
 }
 
 .risk-table .risk-high {
-  color: #da3633;
+  color: var(--risk-high-ink);
   font-weight: 600;
 }
 
 .risk-table .risk-medium {
-  color: #d29922;
+  color: var(--risk-medium-ink);
   font-weight: 600;
 }
 
 .risk-table .risk-low {
-  color: #2f81f7;
+  color: var(--risk-low-ink);
   font-weight: 600;
 }
 
@@ -294,8 +292,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .risk-level-descriptions table {
@@ -320,8 +317,8 @@
   display: inline-block;
   font-size: 11px;
   font-weight: 700;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.15);
+  color: var(--risk-medium-ink);
+  background: color-mix(in srgb, var(--risk-medium) 15%, transparent);
   padding: 1px 5px;
   border-radius: 4px;
   margin: 0 4px;
@@ -329,8 +326,8 @@
 
 .zone-badge-example {
   display: inline-block;
-  color: #52b3ff;
-  background: rgba(82, 179, 255, 0.15);
+  color: var(--protect-ink);
+  background: color-mix(in srgb, var(--protect) 15%, transparent);
   padding: 0 4px;
   border-radius: 4px;
   margin: 0 4px;
@@ -340,8 +337,8 @@
   display: inline-block;
   font-size: 11px;
   font-weight: 700;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
+  color: var(--protect-ink);
+  background: color-mix(in srgb, var(--protect) 15%, transparent);
   padding: 1px 5px;
   border-radius: 4px;
   margin: 0 4px;
@@ -350,7 +347,7 @@
 .boundary-badge-example {
   display: inline-block;
   font-size: 12px;
-  background: rgba(34, 197, 94, 0.15);
+  background: color-mix(in srgb, var(--protect) 15%, transparent);
   padding: 2px 6px;
   border-radius: 4px;
   margin: 0 4px;
@@ -391,13 +388,13 @@
 }
 
 .modifier-direction.increases {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--risk-medium) 15%, transparent);
+  color: var(--risk-medium-ink);
 }
 
 .modifier-direction.decreases {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
+  background: color-mix(in srgb, var(--protect) 15%, transparent);
+  color: var(--protect-ink);
 }
 
 .risk-modifier p {
@@ -482,7 +479,7 @@ kbd {
   display: inline-block;
   padding: 3px 7px;
   font-size: 11px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-ui);
   font-weight: 500;
   line-height: 1;
   color: var(--text-primary);
@@ -520,7 +517,7 @@ kbd {
   border-color: var(--accent-blue);
   text-decoration: none !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .contact-link svg {
@@ -543,7 +540,7 @@ kbd {
 }
 
 .build-id code {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-primary);
   user-select: all;

@@ -23,26 +23,21 @@
 
 .sidebar-header h2 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 650;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
 }
 
 .threat-count {
   font-size: 12px;
   font-weight: 600;
-  color: white;
-  background: var(--accent-red);
+  color: var(--on-danger);
+  background: var(--danger);
   padding: 2px 8px;
   border-radius: 10px;
   min-width: 24px;
   text-align: center;
-}
-
-:root.light-mode .threat-count {
-  color: white;
 }
 
 /* Selection filter banner */
@@ -96,7 +91,7 @@
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 4px;
-  color: white;
+  color: var(--on-risk);
   border: none;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.1s;
@@ -112,19 +107,20 @@
 }
 
 .risk-summary-item.critical {
-  background: #b91c1c;
+  background: var(--risk-critical);
 }
 
 .risk-summary-item.high {
-  background: #da3633;
+  background: var(--risk-high);
 }
 
 .risk-summary-item.medium {
-  background: #d29922;
+  background: var(--risk-medium);
+  color: var(--on-risk-medium);
 }
 
 .risk-summary-item.low {
-  background: #2f81f7;
+  background: var(--risk-low);
 }
 
 .controls-row {
@@ -237,14 +233,6 @@
   white-space: nowrap;
 }
 
-.connection-group .group-header {
-  border-bottom-color: var(--accent-blue);
-}
-
-.connection-group .group-name {
-  color: var(--accent-blue);
-}
-
 .group-count {
   font-size: 11px;
   color: var(--text-secondary);
@@ -270,7 +258,7 @@
   gap: 8px;
   padding: 8px 0;
   margin-bottom: 12px;
-  border-bottom: 1px solid var(--accent-blue);
+  border-bottom: 1px solid var(--border-strong);
 }
 
 .section-icon {
@@ -278,11 +266,10 @@
 }
 
 .section-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--accent-blue);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-primary);
+  font-stretch: var(--stretch-label);
 }
 
 .threats-list {
@@ -294,14 +281,6 @@
 /* Zone threats section */
 .zone-threats-section {
   margin-top: 16px;
-}
-
-.section-divider.zone-section {
-  border-bottom-color: #52b3ff;
-}
-
-.zone-threats-section .section-label {
-  color: #52b3ff;
 }
 
 /* Mobile styles */
@@ -326,7 +305,7 @@
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #22c55e;
+  border-bottom: 1px solid var(--protect-ink);
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -334,7 +313,7 @@
 }
 
 .mitigated-section .section-label {
-  color: #22c55e;
+  color: var(--protect-ink);
 }
 
 .mitigated-section .section-count {
@@ -344,7 +323,7 @@
 }
 
 .section-chevron {
-  color: #22c55e;
+  color: var(--protect-ink);
   transition: transform 0.15s;
 }
 

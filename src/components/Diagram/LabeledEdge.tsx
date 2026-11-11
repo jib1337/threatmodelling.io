@@ -5,6 +5,7 @@ import {
   getSmoothStepPath,
   type EdgeProps,
 } from '@xyflow/react';
+import { X } from 'lucide-react';
 import './LabeledEdge.css';
 
 export interface LabeledEdgeData {
@@ -112,8 +113,9 @@ export default memo(function LabeledEdge({
                   className="edge-delete-button"
                   onClick={handleDelete}
                   title="Delete connection"
+                  aria-label="Delete connection"
                 >
-                  ×
+                  <X size={11} strokeWidth={2.75} aria-hidden="true" />
                 </button>
               )}
             </>

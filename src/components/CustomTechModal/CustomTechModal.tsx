@@ -349,10 +349,10 @@ function ThreatListItem({
               }}
               onClick={e => e.stopPropagation()}
             >
-              <option value="low">{THREAT_SEVERITY_LABELS.low}</option>
-              <option value="medium">{THREAT_SEVERITY_LABELS.medium}</option>
-              <option value="high">{THREAT_SEVERITY_LABELS.high}</option>
               <option value="critical">{THREAT_SEVERITY_LABELS.critical}</option>
+              <option value="high">{THREAT_SEVERITY_LABELS.high}</option>
+              <option value="medium">{THREAT_SEVERITY_LABELS.medium}</option>
+              <option value="low">{THREAT_SEVERITY_LABELS.low}</option>
             </select>
           ) : (
             <span className={`severity-selector severity-${threat.severity} severity-label`}>

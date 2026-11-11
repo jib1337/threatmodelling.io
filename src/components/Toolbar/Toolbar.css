@@ -176,8 +176,8 @@
 .badge {
   font-size: 10px;
   font-weight: 600;
-  background: var(--accent-red);
-  color: white;
+  background: var(--danger);
+  color: var(--on-danger);
   padding: 1px 5px;
   border-radius: 10px;
   min-width: 16px;
@@ -197,7 +197,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--shadow-color);
   z-index: 100;
   overflow: hidden;
 }
@@ -236,15 +236,15 @@
 }
 
 .toolbar-button.zone-active.zone-public {
-  border-color: #f97316;
-  background: rgba(249, 115, 22, 0.2);
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+  border-color: var(--exposed);
+  background: color-mix(in srgb, var(--exposed) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--exposed) 30%, transparent);
 }
 
 .toolbar-button.zone-active.zone-private {
-  border-color: #52b3ff;
-  background: rgba(82, 179, 255, 0.2);
-  box-shadow: 0 0 0 2px rgba(82, 179, 255, 0.3);
+  border-color: var(--protect-ink);
+  background: color-mix(in srgb, var(--protect) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--protect) 30%, transparent);
 }
 
 @media (max-width: 768px) {

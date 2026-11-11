@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +19,7 @@
   padding: 24px;
   width: 100%;
   max-width: 360px;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 16px 32px var(--shadow-color);
 }
 
 .confirm-delete-title {
@@ -65,9 +65,9 @@
 .confirm-delete-confirm {
   background: var(--accent-red);
   border: none;
-  color: white;
+  color: var(--on-danger);
 }
 
 .confirm-delete-confirm:hover {
-  background: #b91c1c;
+  background: var(--danger);
 }

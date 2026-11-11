@@ -57,16 +57,29 @@
   width: 16px;
 }
 
+/* Trust boundaries are drawn as dashed lines, as in a data-flow diagram:
+   orange for an exposed (public) zone, teal for a protected (private) one. */
+.boundary-node.boundary-public {
+  border-color: color-mix(in srgb, var(--exposed) 75%, transparent);
+  background: color-mix(in srgb, var(--exposed) 4%, transparent);
+}
+
+.boundary-node.boundary-private {
+  border-color: color-mix(in srgb, var(--protect) 80%, transparent);
+  background: color-mix(in srgb, var(--protect) 5%, transparent);
+}
+
 .boundary-node.selected {
   border-width: 1px;
+  border-style: solid;
 }
 
 .boundary-node.selected.boundary-public {
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--exposed) 20%, transparent);
 }
 
 .boundary-node.selected.boundary-private {
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--protect) 20%, transparent);
 }
 
 /* Boundary Header */
@@ -84,13 +97,19 @@
 }
 
 .boundary-header-public {
-  background: rgba(249, 115, 22, 0.15);
-  color: #f97316;
+  background: color-mix(in srgb, var(--exposed) var(--tint-strength), transparent);
+  color: var(--exposed-ink);
 }
 
 .boundary-header-private {
-  background: rgba(82, 179, 255, 0.15);
-  color: #52b3ff;
+  background: color-mix(in srgb, var(--protect) var(--tint-strength), transparent);
+  color: var(--protect-ink);
+}
+
+.boundary-header-public .boundary-type-hint,
+.boundary-header-private .boundary-type-hint {
+  color: inherit;
+  opacity: 0.8;
 }
 
 .boundary-label {
@@ -118,14 +137,10 @@
   font-weight: 500;
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(82, 179, 255, 0.2);
-  color: #52b3ff;
+  background: color-mix(in srgb, var(--protect) 20%, transparent);
+  color: var(--protect-ink);
 }
 
-:root[data-theme="dark"] .boundary-network-type {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
-}
 
 /* Boundary Name Input */
 .boundary-name-input {
@@ -142,7 +157,7 @@
 
 .boundary-name-input:focus {
   outline: none;
-  border-color: var(--accent-blue);
+  border-color: var(--accent);
 }
 
 .boundary-name-input::placeholder {
@@ -186,14 +201,13 @@
 }
 
 .boundary-delete-button {
-  background: var(--accent-red);
-  color: white;
-  font-size: 14px;
-  padding-bottom: 2px;
+  background: var(--danger);
+  color: var(--on-danger);
+  padding: 0;
 }
 
 .boundary-delete-button:hover {
-  background: #da3633;
+  background: var(--danger-hover);
 }
 
 /* Boundary Content */
@@ -207,7 +221,7 @@
 
 /* Node Resizer Styling */
 .boundary-resize-line {
-  border-color: var(--accent-blue) !important;
+  border-color: var(--accent) !important;
   pointer-events: none !important;
 }
 
@@ -215,7 +229,7 @@
   width: 10px !important;
   height: 10px !important;
   border-radius: 2px !important;
-  background: var(--accent-blue) !important;
+  background: var(--accent) !important;
   border: none !important;
   pointer-events: auto !important;
   /* Enable touch interactions for resize handles */
@@ -229,37 +243,4 @@
     height: 24px !important;
     border-radius: 4px !important;
   }
-}
-
-/* Dark mode adjustments */
-:root[data-theme="dark"] .boundary-header-public {
-  color: #fb923c;
-}
-
-:root[data-theme="dark"] .boundary-header-private {
-  color: #4ade80;
-}
-
-/* Light mode: same tinted treatment as dark mode, with deeper text tones for
-   contrast on the light canvas. Solid bars were only needed against the old
-   grey background. */
-:root.light-mode .boundary-header-public {
-  background: rgba(234, 88, 12, 0.12);
-  color: #9a3412;
-}
-
-:root.light-mode .boundary-header-private {
-  background: rgba(31, 111, 235, 0.12);
-  color: #0550ae;
-}
-
-:root.light-mode .boundary-header-public .boundary-type-hint,
-:root.light-mode .boundary-header-private .boundary-type-hint {
-  color: inherit;
-  opacity: 0.75;
-}
-
-:root.light-mode .boundary-header-private .boundary-network-type {
-  background: rgba(5, 80, 174, 0.12);
-  color: #0550ae;
 }

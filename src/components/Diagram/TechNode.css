@@ -1,49 +1,53 @@
 .tech-node {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
   border-radius: 8px;
   padding: 12px 16px;
   width: 160px;
+  min-height: 106px; /* the old fixed height, so saved layouts don't shift */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   position: relative;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .tech-node:hover {
-  border-color: var(--text-secondary);
+  border-color: var(--border-strong);
 }
 
 .tech-node.selected {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 /* Provider accent colors */
 .tech-node.provider-aws {
-  border-left: 3px solid #ff9900;
+  border-left: 3px solid var(--provider-aws);
 }
 
 .tech-node.provider-gcp {
-  border-left: 3px solid #42BFF4;
+  border-left: 3px solid var(--provider-gcp);
 }
 
 .tech-node.provider-azure {
-  border-left: 3px solid #0078d4;
+  border-left: 3px solid var(--provider-azure);
 }
 
 .tech-node.provider-self-hosted {
-  border-left: 3px solid #6b7280;
+  border-left: 3px solid var(--provider-self-hosted);
 }
 
 .tech-node.provider-saas {
-  border-left: 3px solid #e91e8c;
+  border-left: 3px solid var(--provider-saas);
 }
 
 .tech-node.provider-actor {
-  border-left: 3px solid #9333ea;
+  border-left: 3px solid var(--provider-actor);
 }
 
 .tech-node.provider-custom {
-  border-left: 3px solid #10b981;
+  border-left: 3px solid var(--provider-custom);
 }
 
 .tech-node-content {
@@ -55,7 +59,7 @@
 
 .tech-node-icon {
   font-size: 24px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   width: 24px;
   height: 24px;
   display: flex;
@@ -78,6 +82,7 @@
   color: var(--text-primary);
   text-align: center;
   font-size: 13px;
+  line-height: 1.3;
   max-width: 100%;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -93,14 +98,10 @@
 .tech-node-provider {
   font-size: 10px;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-stretch: var(--stretch-label);
+  font-weight: 500;
   text-align: center;
   line-height: 1.4;
-  min-height: 2.8em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .tech-node-category {
@@ -119,16 +120,14 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--accent-red);
-  color: white;
+  background: var(--danger);
+  color: var(--on-danger);
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 2px;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -138,7 +137,7 @@
 }
 
 .delete-button:hover {
-  background: #da3633;
+  background: var(--danger-hover);
 }
 
 /* React Flow handles */
@@ -150,8 +149,8 @@
 }
 
 .tech-node .react-flow__handle:hover {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .tech-node .react-flow__handle-left {
@@ -183,8 +182,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  border: 2px solid var(--bg-secondary);
+  color: var(--on-risk);
+  border: 2px solid var(--node-bg);
   z-index: 1;
 }
 
@@ -194,31 +193,32 @@
 }
 
 .sensitivity-indicator.sensitivity-public {
-  background: #238636;
+  background: var(--risk-low);
 }
 
 .sensitivity-indicator.sensitivity-internal {
-  background: #2f81f7;
+  background: var(--risk-medium);
+  color: var(--on-risk-medium);
 }
 
 .sensitivity-indicator.sensitivity-confidential {
-  background: #d29922;
+  background: var(--risk-high);
 }
 
 .sensitivity-indicator.sensitivity-restricted {
-  background: #da3633;
+  background: var(--risk-critical);
 }
 
 /* Subtle glow based on sensitivity */
 .tech-node.sensitivity-restricted {
-  box-shadow: 0 0 8px rgba(218, 54, 51, 0.3);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--risk-critical) 38%, transparent);
 }
 
 .tech-node.sensitivity-confidential {
-  box-shadow: 0 0 8px rgba(210, 153, 34, 0.2);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--risk-high) 26%, transparent);
 }
 
 .tech-node.sensitivity-restricted.selected,
 .tech-node.sensitivity-confidential.selected {
-  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
