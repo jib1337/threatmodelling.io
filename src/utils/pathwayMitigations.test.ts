@@ -151,9 +151,12 @@ describe('getUpstreamMitigations', () => {
     ]);
     const edges = [{ id: 'e1', source: 'n-waf', target: 'n-app' }];
     const mitigations = getUpstreamMitigations('n-app', edges, nodeToTechId);
-    expect(mitigations).toEqual([
+    // aws-waf provides waf-protection and rate-limiting
+    expect(mitigations).toHaveLength(2);
+    expect(mitigations).toEqual(expect.arrayContaining([
       { mitigationType: 'waf-protection', techId: 'aws-waf', techName: 'AWS WAF' },
-    ]);
+      { mitigationType: 'rate-limiting', techId: 'aws-waf', techName: 'AWS WAF' },
+    ]));
   });
 
   it('returns multiple mitigations when a single upstream tech has multiple capabilities', () => {
@@ -179,7 +182,7 @@ describe('getUpstreamMitigations', () => {
     // n-cf → n-waf → n-app. Both upstreams provide mitigations.
     const nodeToTechId = new Map([
       ['n-cf', 'saas-cloudflare'], // ddos + waf
-      ['n-waf', 'aws-waf'],        // waf
+      ['n-waf', 'aws-waf'],        // waf + rate limiting
       ['n-app', 'aws-ec2'],
     ]);
     const edges = [
@@ -187,9 +190,9 @@ describe('getUpstreamMitigations', () => {
       { id: 'e2', source: 'n-waf', target: 'n-app' },
     ];
     const mitigations = getUpstreamMitigations('n-app', edges, nodeToTechId);
-    // 3 total: ddos+waf from cloudflare, waf from aws-waf
-    expect(mitigations.length).toBe(3);
-    expect(mitigations.map(m => m.techId).sort()).toEqual(['aws-waf', 'saas-cloudflare', 'saas-cloudflare']);
+    // 4 total: ddos+waf from cloudflare, waf+rate limiting from aws-waf
+    expect(mitigations.length).toBe(4);
+    expect(mitigations.map(m => m.techId).sort()).toEqual(['aws-waf', 'aws-waf', 'saas-cloudflare', 'saas-cloudflare']);
   });
 });
 
@@ -359,9 +362,11 @@ describe('precomputeUpstreamMitigations', () => {
     const edges = [{ id: 'e1', source: 'n-waf', target: 'n-app' }];
     const result = precomputeUpstreamMitigations(nodes, edges);
     expect(result.get('n-waf')).toEqual([]);
-    expect(result.get('n-app')).toEqual([
+    expect(result.get('n-app')).toHaveLength(2);
+    expect(result.get('n-app')).toEqual(expect.arrayContaining([
       { mitigationType: 'waf-protection', techId: 'aws-waf', techName: 'aws-waf' },
-    ]);
+      { mitigationType: 'rate-limiting', techId: 'aws-waf', techName: 'aws-waf' },
+    ]));
   });
 
   it('handles a graph where no node has any mitigation capability', () => {
@@ -392,9 +397,11 @@ describe('precomputeUpstreamMitigations', () => {
     const result = precomputeUpstreamMitigations(nodes, edges);
     const appMitigations = result.get('n-app')!;
     // Cloudflare appears once (BFS visited-set dedupe), contributing ddos+waf;
-    // aws-waf appears once, contributing waf. Total: 3.
-    expect(appMitigations.length).toBe(3);
+    // aws-waf appears once, contributing waf+rate limiting. Total: 4.
+    expect(appMitigations.length).toBe(4);
     const cfCount = appMitigations.filter(m => m.techId === 'saas-cloudflare').length;
     expect(cfCount).toBe(2); // ddos + waf from the same tech
+    const wafCount = appMitigations.filter(m => m.techId === 'aws-waf').length;
+    expect(wafCount).toBe(2); // waf + rate limiting from the same tech
   });
 });
