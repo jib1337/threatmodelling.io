@@ -200,7 +200,7 @@
       },
       "waf-protection": {
         "enabled": false,
-        "mode": "remove",
+        "mode": "reduce",
         "reductionPercent": 50
       },
       "rate-limiting": {
