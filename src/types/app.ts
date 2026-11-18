@@ -299,7 +299,7 @@ const MITIGATION_DEFAULTS: Partial<
   Record<PathwayMitigationType, Omit<PathwayMitigationConfig, 'enabled'>>
 > = {
   'ddos-protection': { mode: 'reduce', reductionPercent: 50 },
-  'waf-protection': { mode: 'remove', reductionPercent: 50 },
+  'waf-protection': { mode: 'reduce', reductionPercent: 50 },
   'rate-limiting': { mode: 'reduce', reductionPercent: 30 },
   'network-firewall': { mode: 'reduce', reductionPercent: 40 },
 };
