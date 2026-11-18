@@ -36,26 +36,22 @@ export interface DiagramBoundary {
 // Connection threats that are mitigated by TLS encryption
 const ENCRYPTION_MITIGATED_THREATS = ['connection-mitm', 'connection-data-exposure'];
 
-// Check if a connection is protected by encryption (either endpoint enforces TLS)
-function isConnectionEncrypted(
-  sourceTech: Technology | undefined,
-  targetTech: Technology | undefined
-): boolean {
-  return !!(
-    sourceTech?.connectionSecurity?.enforcesEncryption ||
-    targetTech?.connectionSecurity?.enforcesEncryption
-  );
+// Check if a connection is protected by encryption. Edges point from the
+// caller to the service it connects to, so only the target's TLS enforcement
+// protects the flow: a TLS-only service can still make plaintext outbound
+// calls (e.g. an API gateway to an HTTP backend).
+function isConnectionEncrypted(targetTech: Technology | undefined): boolean {
+  return !!targetTech?.connectionSecurity?.enforcesEncryption;
 }
 
 // Determine if a threat should be mitigated and by what
 function getConnectionMitigation(
   threat: Threat,
-  sourceTech: Technology | undefined,
   targetTech: Technology | undefined
 ): ConnectionMitigation | undefined {
   // Check for encryption mitigation
   if (ENCRYPTION_MITIGATED_THREATS.includes(threat.id)) {
-    if (isConnectionEncrypted(sourceTech, targetTech)) {
+    if (isConnectionEncrypted(targetTech)) {
       return 'encrypted';
     }
   }
@@ -263,7 +259,7 @@ export function resolveActiveThreats(
           );
 
           // Check if this threat is mitigated by connection security
-          const mitigatedBy = getConnectionMitigation(threat, sourceTech, targetTech);
+          const mitigatedBy = getConnectionMitigation(threat, targetTech);
 
           // Check for severity override (connection threat: connection::threatId)
           const connOverrideKey = `connection::${threat.id}`;

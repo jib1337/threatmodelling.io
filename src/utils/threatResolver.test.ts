@@ -175,7 +175,7 @@ describe('resolveActiveThreats', () => {
     expect(result).toEqual([]);
   });
 
-  it('marks connection threats mitigated by TLS-enforcing endpoints', () => {
+  it('marks connection threats mitigated when the target enforces TLS', () => {
     const plain = makeTech({ id: 'aws-ec2' });
     const tlsEnforcing = makeTech({
       id: 'aws-api-gateway',
@@ -192,8 +192,9 @@ describe('resolveActiveThreats', () => {
       makeThreat({ id: 'connection-other', isConnectionThreat: true, severity: 'high' }),
     ]);
 
+    // EC2 calls API Gateway: the gateway only accepts TLS
     const result = resolveActiveThreats(
-      [makeNode('n1', 'aws-api-gateway'), makeNode('n2', 'aws-ec2')],
+      [makeNode('n1', 'aws-ec2'), makeNode('n2', 'aws-api-gateway')],
       [makeEdge('e1', 'n1', 'n2')],
     );
     const mitm = result.find(r => r.threat.id === 'connection-mitm');
@@ -202,6 +203,31 @@ describe('resolveActiveThreats', () => {
     expect(mitm?.mitigatedBy).toBe('encrypted');
     expect(expose?.mitigatedBy).toBe('encrypted');
     expect(other?.mitigatedBy).toBeUndefined();
+  });
+
+  it('does not mark connection threats mitigated when only the source enforces TLS', () => {
+    const plain = makeTech({ id: 'aws-ec2' });
+    const tlsEnforcing = makeTech({
+      id: 'aws-api-gateway',
+      name: 'API Gateway',
+      connectionSecurity: { enforcesEncryption: true },
+    });
+    vi.mocked(getTechnologyById).mockImplementation(id =>
+      id === 'aws-api-gateway' ? tlsEnforcing : plain,
+    );
+    vi.mocked(getThreatsForTechnology).mockReturnValue([]);
+    vi.mocked(getConnectionThreats).mockReturnValue([
+      makeThreat({ id: 'connection-mitm', isConnectionThreat: true, severity: 'high' }),
+      makeThreat({ id: 'connection-data-exposure', isConnectionThreat: true, severity: 'high' }),
+    ]);
+
+    // API Gateway calls an HTTP backend on EC2: the outbound hop can be plaintext
+    const result = resolveActiveThreats(
+      [makeNode('n1', 'aws-api-gateway'), makeNode('n2', 'aws-ec2')],
+      [makeEdge('e1', 'n1', 'n2')],
+    );
+    expect(result).toHaveLength(2);
+    expect(result.every(r => r.mitigatedBy === undefined)).toBe(true);
   });
 
   it('escalates pathway-threat risk based on max downstream sensitivity', () => {
