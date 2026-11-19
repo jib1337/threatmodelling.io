@@ -1,6 +1,6 @@
 import type { CloudProvider } from '../../data/schema';
 import { useTheme } from '../../context/ThemeContext';
-import { Box } from 'lucide-react';
+import { Box, CloudCog, Server, type LucideIcon } from 'lucide-react';
 import AwsLogo from '../../assets/provider-logos/aws.svg';
 import AwsLogoLight from '../../assets/provider-logos/aws-light.svg';
 import GcpLogo from '../../assets/provider-logos/gcp.svg';
@@ -27,9 +27,13 @@ const FALLBACK_ICONS: Partial<Record<CloudProvider, string>> = {
   'aws': '☁️',
   'gcp': '🌐',
   'azure': '🔷',
-  'self-hosted': '🖥️',
-  'saas': '📦',
   'actor': '👤',
+};
+
+const LUCIDE_ICONS: Partial<Record<CloudProvider, { icon: LucideIcon; color: string }>> = {
+  'custom': { icon: Box, color: 'var(--provider-custom)' },
+  'self-hosted': { icon: Server, color: 'var(--provider-self-hosted)' },
+  'saas': { icon: CloudCog, color: 'var(--provider-saas)' },
 };
 
 const ICON_SIZES: Record<string, number> = {
@@ -52,15 +56,17 @@ export default function ProviderIcon({ provider, size = 'medium', className = ''
     );
   }
 
-  if (provider === 'custom') {
+  const lucide = LUCIDE_ICONS[provider];
+  if (lucide) {
+    const Icon = lucide.icon;
     return (
       <span className={`provider-icon-emoji provider-icon-${size} ${className}`}>
-        <Box size={ICON_SIZES[size]} color="var(--provider-custom)" />
+        <Icon size={ICON_SIZES[size]} color={lucide.color} aria-label={`${provider} icon`} />
       </span>
     );
   }
 
-  // Fallback to emoji for providers without logos (self-hosted, saas)
+  // Fallback to emoji (actor, or a cloud logo that failed to resolve)
   return (
     <span className={`provider-icon-emoji provider-icon-${size} ${className}`}>
       {FALLBACK_ICONS[provider]}
