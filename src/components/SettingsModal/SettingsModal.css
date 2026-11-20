@@ -299,19 +299,52 @@
   }
 }
 
-/* Hide mitigated threats option */
-.hide-mitigated-row {
+/* Mitigated threat visibility — sits in a .mitigation-card like the pathway options */
+.visibility-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.visibility-sub-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: 4px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border-color);
+}
+
+.visibility-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  gap: 16px;
 }
 
-.hide-mitigated-label {
+.visibility-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.visibility-option-label {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
+}
+
+/* Display cards stack with the same gap as the pathway mitigation cards */
+.display-card {
+  margin-bottom: 12px;
+}
+
+.display-card .mitigation-header {
+  gap: 12px;
+}
+
+/* A visibility option that has no effect yet (its prerequisite is off) */
+.visibility-option.unavailable .visibility-option-text {
+  opacity: 0.5;
 }
