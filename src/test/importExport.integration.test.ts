@@ -7,7 +7,14 @@ import {
 } from '../context/ThreatModelContext';
 import { loadProviders } from '../data';
 import type { ThreatModel, Technology } from '../data/schema';
-import { DEFAULT_PATHWAY_MITIGATION_SETTINGS } from '../data/schema';
+import {
+  DEFAULT_PATHWAY_MITIGATION_SETTINGS,
+  SHOW_ALL_MITIGATED,
+  HIDE_ALL_MITIGATED,
+  isThreatMitigated,
+  partitionMitigatedThreats,
+} from '../data/schema';
+import { getThreatControlKeys } from '../utils/controlFingerprint';
 
 // Preload real AWS data so getTechnologyById() resolves during IMPORT_MODEL.
 beforeAll(async () => {
@@ -240,29 +247,148 @@ describe('Import workflow', () => {
     expect(mitigations['rate-limiting'].reductionPercent).toBe(90);
   });
 
-  it('defaults hideMitigated to off for files saved before the option existed', async () => {
+  it('shows every mitigated threat for files saved before the option existed', async () => {
     const { result } = renderHook(() => useThreatModel(), { wrapper });
-    const { hideMitigated: _omitted, ...olderSettings } = DEFAULT_PATHWAY_MITIGATION_SETTINGS;
+    const { mitigatedVisibility: _omitted, ...olderSettings } = DEFAULT_PATHWAY_MITIGATION_SETTINGS;
     await act(async () => {
       await result.current.importModel(baseModel({
         pathwayMitigationSettings: { ...olderSettings, enabled: true } as ThreatModel['pathwayMitigationSettings'],
       }));
     });
-    expect(result.current.pathwayMitigationSettings.hideMitigated).toBe(false);
+    expect(result.current.pathwayMitigationSettings.mitigatedVisibility).toEqual(SHOW_ALL_MITIGATED);
     expect(result.current.pathwayMitigationSettings.enabled).toBe(true);
   });
 
-  it('round-trips hideMitigated through import', async () => {
+  it('maps a legacy hideMitigated: true onto every kind', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const { mitigatedVisibility: _omitted, ...olderSettings } = DEFAULT_PATHWAY_MITIGATION_SETTINGS;
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        pathwayMitigationSettings: { ...olderSettings, hideMitigated: true } as unknown as ThreatModel['pathwayMitigationSettings'],
+      }));
+    });
+    expect(result.current.pathwayMitigationSettings.mitigatedVisibility).toEqual(HIDE_ALL_MITIGATED);
+  });
+
+  it('round-trips mitigatedVisibility through import', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const visibility = { hideUpstream: true, hideConnection: false, hideControls: true };
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        pathwayMitigationSettings: { ...DEFAULT_PATHWAY_MITIGATION_SETTINGS, mitigatedVisibility: visibility },
+      }));
+    });
+    expect(result.current.pathwayMitigationSettings.mitigatedVisibility).toEqual(visibility);
+  });
+
+  it('keeps a fully-ticked threat active while hideControls is off', async () => {
     const { result } = renderHook(() => useThreatModel(), { wrapper });
     await act(async () => {
       await result.current.importModel(baseModel({
-        pathwayMitigationSettings: { ...DEFAULT_PATHWAY_MITIGATION_SETTINGS, hideMitigated: true },
+        nodes: [{ id: 'n1', technologyId: 'aws-ec2', position: { x: 0, y: 0 }, sensitivity: 'internal' }],
       }));
     });
-    expect(result.current.pathwayMitigationSettings.hideMitigated).toBe(true);
+    const target = result.current.activeThreats.find(t => getThreatControlKeys(t).length > 0)!;
+    act(() => { getThreatControlKeys(target).forEach(k => result.current.setControlImplemented(k, true)); });
+    const after = result.current.activeThreats.find(
+      t => t.threat.id === target.threat.id && t.sourceNodeId === target.sourceNodeId,
+    )!;
+    expect(after.controlsImplemented).toBeUndefined();
+    expect(isThreatMitigated(after)).toBe(false);
   });
 
-  it('does not recompute threats when only hideMitigated changes', async () => {
+  it('marks a fully-ticked threat mitigated when markControlsMitigated is on', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        nodes: [{ id: 'n1', technologyId: 'aws-ec2', position: { x: 0, y: 0 }, sensitivity: 'internal' }],
+        pathwayMitigationSettings: { ...DEFAULT_PATHWAY_MITIGATION_SETTINGS, markControlsMitigated: true },
+      }));
+    });
+    const target = result.current.activeThreats.find(t => getThreatControlKeys(t).length > 0)!;
+    act(() => { getThreatControlKeys(target).forEach(k => result.current.setControlImplemented(k, true)); });
+    const after = result.current.activeThreats.find(
+      t => t.threat.id === target.threat.id && t.sourceNodeId === target.sourceNodeId,
+    )!;
+    expect(isThreatMitigated(after)).toBe(true);
+    // Mitigated but not hidden: it stays in the Mitigated group
+    expect(partitionMitigatedThreats([after], result.current.pathwayMitigationSettings.mitigatedVisibility).mitigated)
+      .toEqual([after]);
+  });
+
+  it('defaults markControlsMitigated to off and round-trips it through import', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    const { markControlsMitigated: _omitted, ...olderSettings } = DEFAULT_PATHWAY_MITIGATION_SETTINGS;
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        pathwayMitigationSettings: olderSettings as ThreatModel['pathwayMitigationSettings'],
+      }));
+    });
+    expect(result.current.pathwayMitigationSettings.markControlsMitigated).toBe(false);
+
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        pathwayMitigationSettings: { ...DEFAULT_PATHWAY_MITIGATION_SETTINGS, markControlsMitigated: true },
+      }));
+    });
+    expect(result.current.pathwayMitigationSettings.markControlsMitigated).toBe(true);
+  });
+
+  it('ignores hideControls while markControlsMitigated is off', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        nodes: [{ id: 'n1', technologyId: 'aws-ec2', position: { x: 0, y: 0 }, sensitivity: 'internal' }],
+        pathwayMitigationSettings: {
+          ...DEFAULT_PATHWAY_MITIGATION_SETTINGS,
+          mitigatedVisibility: { ...SHOW_ALL_MITIGATED, hideControls: true },
+        },
+      }));
+    });
+    const target = result.current.activeThreats.find(t => getThreatControlKeys(t).length > 0)!;
+    act(() => { getThreatControlKeys(target).forEach(k => result.current.setControlImplemented(k, true)); });
+    const after = result.current.activeThreats.find(
+      t => t.threat.id === target.threat.id && t.sourceNodeId === target.sourceNodeId,
+    )!;
+    expect(isThreatMitigated(after)).toBe(false);
+    expect(partitionMitigatedThreats([after], result.current.pathwayMitigationSettings.mitigatedVisibility).active)
+      .toEqual([after]);
+  });
+
+  it('hides a fully-ticked threat when both markControlsMitigated and hideControls are on', async () => {
+    const { result } = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => {
+      await result.current.importModel(baseModel({
+        nodes: [{ id: 'n1', technologyId: 'aws-ec2', position: { x: 0, y: 0 }, sensitivity: 'internal' }],
+        pathwayMitigationSettings: {
+          ...DEFAULT_PATHWAY_MITIGATION_SETTINGS,
+          markControlsMitigated: true,
+          mitigatedVisibility: { ...SHOW_ALL_MITIGATED, hideControls: true },
+        },
+      }));
+    });
+    const target = result.current.activeThreats.find(t => getThreatControlKeys(t).length > 0);
+    expect(target).toBeDefined();
+    const keys = getThreatControlKeys(target!);
+    const find = () => result.current.activeThreats.find(
+      t => t.threat.id === target!.threat.id && t.sourceNodeId === target!.sourceNodeId,
+    )!;
+
+    // Every control but the last: still active
+    act(() => { keys.slice(0, -1).forEach(k => result.current.setControlImplemented(k, true)); });
+    expect(isThreatMitigated(find())).toBe(false);
+
+    act(() => { result.current.setControlImplemented(keys[keys.length - 1], true); });
+    expect(find().controlsImplemented).toBe(true);
+    expect(isThreatMitigated(find())).toBe(true);
+    const { active, mitigated } = partitionMitigatedThreats(
+      [find()], result.current.pathwayMitigationSettings.mitigatedVisibility,
+    );
+    expect(active).toEqual([]);
+    expect(mitigated).toEqual([]);
+  });
+
+  it('does not recompute threats when only mitigatedVisibility changes', async () => {
     const { result } = renderHook(() => useThreatModel(), { wrapper });
     await act(async () => {
       await result.current.importModel(baseModel({
@@ -275,10 +401,10 @@ describe('Import workflow', () => {
     act(() => {
       result.current.updatePathwayMitigationSettings({
         ...result.current.pathwayMitigationSettings,
-        hideMitigated: true,
+        mitigatedVisibility: HIDE_ALL_MITIGATED,
       });
     });
-    expect(result.current.pathwayMitigationSettings.hideMitigated).toBe(true);
+    expect(result.current.pathwayMitigationSettings.mitigatedVisibility).toEqual(HIDE_ALL_MITIGATED);
     expect(result.current.activeThreats).toBe(before);
 
     // A setting that does affect resolution still recomputes

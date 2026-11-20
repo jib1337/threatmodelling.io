@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Node, Edge } from '@xyflow/react';
 import type { ActiveThreat, TechNodeData, Threat } from '../data/schema';
+import { HIDE_ALL_MITIGATED } from '../data/schema';
 
 // --- jsPDF / autoTable mocking ---------------------------------------------
 
@@ -290,7 +291,7 @@ describe('generateExecutiveSummary', () => {
     const t2 = makeActive(makeThreat({ id: 'tls', name: 'Mitigated By TLS' }), {
       mitigatedBy: 'encrypted',
     });
-    await generateExecutiveSummary('M', [makeNode('n1', 'EC2')], [], [t1, t2], null, true);
+    await generateExecutiveSummary('M', [makeNode('n1', 'EC2')], [], [t1, t2], null, HIDE_ALL_MITIGATED);
     expect(allText(lastDoc)).not.toContain('Mitigated Threats');
   });
 
@@ -483,7 +484,7 @@ describe('generateFullReport', () => {
     });
 
     it('omits the mitigated table when hideMitigated is set', async () => {
-      await generateFullReport('M', [makeNode('n1', 'EC2')], [], [active(), removed()], null, {}, true);
+      await generateFullReport('M', [makeNode('n1', 'EC2')], [], [active(), removed()], null, {}, HIDE_ALL_MITIGATED);
       expect(allText(lastDoc)).not.toContain('MITIGATED THREATS');
       expect(autoTableCalls.some(c => (c.head as string[][])[0][3] === 'Mitigated By')).toBe(false);
     });

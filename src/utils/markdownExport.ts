@@ -1,5 +1,6 @@
 import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType } from '../data/schema';
-import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation } from '../data/schema';
+import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation, SHOW_ALL_MITIGATED } from '../data/schema';
+import type { MitigatedVisibility } from '../data/schema';
 import type { Node, Edge } from '@xyflow/react';
 import { buildControlKey } from './controlFingerprint';
 
@@ -482,11 +483,11 @@ export function buildMarkdownReport(
   edges: Edge[],
   threats: ActiveThreat[],
   implementedControls: Record<string, true> = {},
-  hideMitigated = false,
+  mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
 ): string {
   // Mitigated threats are reported in their own section (or omitted when hidden)
   const { active: filteredThreats, mitigated: mitigatedThreats } =
-    partitionMitigatedThreats(threats, hideMitigated);
+    partitionMitigatedThreats(threats, mitigatedVisibility);
 
   const generatedAt = formatDate(new Date());
 
@@ -510,8 +511,8 @@ export async function generateMarkdownReport(
   edges: Edge[],
   threats: ActiveThreat[],
   implementedControls: Record<string, true> = {},
-  hideMitigated = false,
+  mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
 ): Promise<void> {
-  const markdown = buildMarkdownReport(modelName, nodes, edges, threats, implementedControls, hideMitigated);
+  const markdown = buildMarkdownReport(modelName, nodes, edges, threats, implementedControls, mitigatedVisibility);
   downloadMarkdown(markdown, modelName);
 }

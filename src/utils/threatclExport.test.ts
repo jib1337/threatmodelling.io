@@ -15,6 +15,7 @@ import type {
   ServiceCategory,
   StrideCategory,
 } from '../data/schema';
+import { HIDE_ALL_MITIGATED } from '../data/schema';
 import { generateThreatclDocument } from './threatclExport';
 import { buildControlKey } from './controlFingerprint';
 
@@ -496,9 +497,9 @@ describe('generateThreatclDocument', () => {
       );
     });
 
-    it('omits mitigated threats entirely when hideMitigated is set', () => {
+    it('omits mitigated threats entirely when every kind is hidden', () => {
       const { nodes, edges, boundaries, activeThreats } = buildRepresentativeModel();
-      const hcl = generateThreatclDocument('M', nodes, edges, activeThreats, boundaries, {}, true);
+      const hcl = generateThreatclDocument('M', nodes, edges, activeThreats, boundaries, {}, HIDE_ALL_MITIGATED);
       expect(hcl).not.toMatch(/threat "Denial of Service"/);
       expect(hcl).not.toMatch(/control "mitigation-/);
       expect(hcl).toMatch(/threat "SQL Injection"/);

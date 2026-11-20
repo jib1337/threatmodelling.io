@@ -441,7 +441,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
-      hideMitigated: false,
+      mitigatedVisibility: { hideUpstream: false, hideConnection: false, hideControls: false }, markControlsMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: false, mode: 'reduce', reductionPercent: 50 },
         'waf-protection': { enabled: true, mode: 'remove', reductionPercent: 50 },
@@ -477,7 +477,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
-      hideMitigated: false,
+      mitigatedVisibility: { hideUpstream: false, hideConnection: false, hideControls: false }, markControlsMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: true, mode: 'reduce', reductionPercent: 50 },
         'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
@@ -511,7 +511,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
-      hideMitigated: false,
+      mitigatedVisibility: { hideUpstream: false, hideConnection: false, hideControls: false }, markControlsMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: true, mode: 'reduce', reductionPercent: 50 },
         'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
@@ -544,7 +544,7 @@ describe('resolveActiveThreats', () => {
 
     const settings: PathwayMitigationSettings = {
       enabled: true,
-      hideMitigated: false,
+      mitigatedVisibility: { hideUpstream: false, hideConnection: false, hideControls: false }, markControlsMitigated: false,
       mitigations: {
         'ddos-protection': { enabled: true, mode: 'remove', reductionPercent: 50 },
         'waf-protection': { enabled: false, mode: 'remove', reductionPercent: 50 },
