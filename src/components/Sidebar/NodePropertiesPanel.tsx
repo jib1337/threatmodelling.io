@@ -155,7 +155,7 @@ export default function NodePropertiesPanel() {
               <div className="threats-disabled-header">
                 <label className="property-label">Exclude from Threats</label>
                 <button
-                  className={`toggle-switch ${threatsDisabled ? 'on' : 'off'}`}
+                  className={`toggle-switch small ${threatsDisabled ? 'on' : 'off'}`}
                   onClick={() => updateNodeThreatsDisabled(selectedNodeId, !threatsDisabled)}
                   aria-label="Toggle exclude from threats"
                 >
