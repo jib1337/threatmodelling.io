@@ -1,0 +1,78 @@
+/* Shared toggle switch.
+   Markup: <button class="toggle-switch on|off [small|master]"><span class="toggle-knob" /></button>
+   Default 44×24; `small` (40×22) for dense panels; `master` (48×26) for a section's top-level switch. */
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+/* Off track is a recessed well with an inset outline, so it reads against
+   both modal/panel backgrounds and --bg-tertiary cards. */
+.toggle-switch.off {
+  background: var(--bg-primary);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.toggle-switch.on {
+  background: var(--accent-blue);
+}
+
+.toggle-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.toggle-switch.on .toggle-knob {
+  transform: translateX(20px);
+  background: var(--on-accent);
+}
+
+/* Sizes */
+.toggle-switch.small {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+}
+
+.toggle-switch.small .toggle-knob {
+  width: 16px;
+  height: 16px;
+}
+
+.toggle-switch.small.on .toggle-knob {
+  transform: translateX(18px);
+}
+
+.toggle-switch.master {
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+}
+
+.toggle-switch.master .toggle-knob {
+  width: 20px;
+  height: 20px;
+}
+
+.toggle-switch.master.on .toggle-knob {
+  transform: translateX(22px);
+}
