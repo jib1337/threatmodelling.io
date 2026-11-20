@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { Zap, Shield, Timer, Network, ShieldCheck } from 'lucide-react';
+import { Zap, Shield, Timer, Network, ShieldCheck, EyeOff, ListChecks } from 'lucide-react';
 import { useSettings } from '../../context/ThreatModelContext';
-import type { PathwayMitigationType } from '../../data/schema';
+import type { PathwayMitigationType, MitigatedVisibility } from '../../data/schema';
 import {
   PATHWAY_MITIGATION_DEFINITIONS,
   PATHWAY_MITIGATION_LABELS,
@@ -30,6 +30,26 @@ const FALLBACK_MITIGATION_ICON = ShieldCheck;
 
 // Every mitigation type the catalogue defines, in catalogue order.
 const MITIGATION_TYPES = PATHWAY_MITIGATION_DEFINITIONS.map(m => m.id);
+
+// One sub-toggle per kind of mitigation, under "Hide all mitigated threats".
+const VISIBILITY_OPTIONS: { key: keyof MitigatedVisibility; label: string; description: string }[] = [
+  {
+    key: 'hideUpstream',
+    label: 'Hide threats mitigated by upstream protection',
+    description:
+      'Threats removed by a protective technology earlier in the data flow. '
+  },
+  {
+    key: 'hideConnection',
+    label: 'Hide connection threats mitigated by enforced encryption',
+    description: 'Connection threats where the service being called enforces encrypted connections.',
+  },
+  {
+    key: 'hideControls',
+    label: 'Hide threats mitigated by recommended controls',
+    description: 'Threats marked as mitigated because all their recommended controls are ticked.'
+  },
+];
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { pathwayMitigationSettings, updatePathwayMitigationSettings } = useSettings();
@@ -65,11 +85,36 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const getConfig = (type: PathwayMitigationType) =>
     pathwayMitigationSettings.mitigations[type] ?? DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations[type];
 
-  const handleHideMitigatedToggle = () => {
+  const handleMarkControlsToggle = () => {
     updatePathwayMitigationSettings({
       ...pathwayMitigationSettings,
-      hideMitigated: !pathwayMitigationSettings.hideMitigated,
+      markControlsMitigated: !pathwayMitigationSettings.markControlsMitigated,
     });
+  };
+
+  const visibility = pathwayMitigationSettings.mitigatedVisibility;
+  // Hiding control-mitigated threats only means something once they can be
+  // marked as mitigated, so that toggle is disabled until then.
+  const isOptionAvailable = (key: keyof MitigatedVisibility) =>
+    key !== 'hideControls' || pathwayMitigationSettings.markControlsMitigated;
+  const availableOptions = VISIBILITY_OPTIONS.filter(o => isOptionAvailable(o.key));
+  const hiddenCount = availableOptions.filter(o => visibility[o.key]).length;
+  const allHidden = hiddenCount === availableOptions.length;
+
+  const setVisibility = (next: MitigatedVisibility) => {
+    updatePathwayMitigationSettings({ ...pathwayMitigationSettings, mitigatedVisibility: next });
+  };
+
+  // The "hide all" toggle is on only when every available sub-toggle is;
+  // switching it sets them all together. A disabled sub-toggle keeps its value.
+  const handleHideAllToggle = () => {
+    const next = { ...visibility };
+    for (const o of availableOptions) next[o.key] = !allHidden;
+    setVisibility(next);
+  };
+
+  const handleVisibilityToggle = (key: keyof MitigatedVisibility) => {
+    setVisibility({ ...visibility, [key]: !visibility[key] });
   };
 
   const handleMasterToggle = () => {
@@ -240,16 +285,85 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <h3>Display</h3>
             </div>
 
-            <div className="hide-mitigated-row">
-              <span className="hide-mitigated-label">Hide mitigated threats</span>
-              <button
-                className={`toggle-switch ${pathwayMitigationSettings.hideMitigated ? 'on' : 'off'}`}
-                onClick={handleHideMitigatedToggle}
-                aria-label="Hide mitigated threats"
-                aria-pressed={pathwayMitigationSettings.hideMitigated}
-              >
-                <span className="toggle-knob" />
-              </button>
+            <div className={`mitigation-card display-card ${pathwayMitigationSettings.markControlsMitigated ? 'enabled' : 'disabled'}`}>
+              <div className="mitigation-header">
+                <div className="mitigation-title">
+                  <ListChecks size={16} className="mitigation-icon" />
+                  <span>Mark threats with all recommended controls ticked as mitigated</span>
+                </div>
+                <button
+                  className={`toggle-switch ${pathwayMitigationSettings.markControlsMitigated ? 'on' : 'off'}`}
+                  onClick={handleMarkControlsToggle}
+                  aria-label="Mark threats with all recommended controls ticked as mitigated"
+                  aria-pressed={pathwayMitigationSettings.markControlsMitigated}
+                >
+                  <span className="toggle-knob" />
+                </button>
+              </div>
+
+              <div className="mitigation-info">
+                <span className="mitigation-description">
+                  Moves these threats into the Mitigated group, so they no longer count towards risk totals.
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`mitigation-card ${hiddenCount > 0 ? 'enabled' : 'disabled'}`}
+              role="group"
+              aria-labelledby="mitigated-visibility-heading"
+            >
+              <div className="mitigation-header">
+                <div className="mitigation-title">
+                  <EyeOff size={16} className="mitigation-icon" />
+                  <span id="mitigated-visibility-heading">Mitigated threat visibility</span>
+                </div>
+              </div>
+
+              <div className="mitigation-info">
+                <span className="mitigation-description">
+                  Hidden threats are removed from the threat list and left out of exported reports.
+                </span>
+              </div>
+
+              <div className="mitigation-options visibility-options">
+                <div className="visibility-option">
+                  <div className="visibility-option-text">
+                    <span className="visibility-option-label">Hide all mitigated threats in below categories</span>
+                  </div>
+                  <button
+                    className={`toggle-switch ${allHidden ? 'on' : 'off'}`}
+                    onClick={handleHideAllToggle}
+                    aria-label="Hide all mitigated threats in below categories"
+                    aria-pressed={allHidden ? true : hiddenCount > 0 ? 'mixed' : false}
+                  >
+                    <span className="toggle-knob" />
+                  </button>
+                </div>
+
+                <div className="visibility-sub-options">
+                  {VISIBILITY_OPTIONS.map(({ key, label, description }) => (
+                    <div
+                      key={key}
+                      className={`visibility-option ${isOptionAvailable(key) ? '' : 'unavailable'}`}
+                    >
+                      <div className="visibility-option-text">
+                        <span className="visibility-option-label">{label}</span>
+                        <span className="mitigation-description">{description}</span>
+                      </div>
+                      <button
+                        className={`toggle-switch ${visibility[key] ? 'on' : 'off'}`}
+                        onClick={() => handleVisibilityToggle(key)}
+                        disabled={!isOptionAvailable(key)}
+                        aria-label={label}
+                        aria-pressed={visibility[key]}
+                      >
+                        <span className="toggle-knob" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         </div>

@@ -1,6 +1,7 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
 import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType } from '../data/schema';
-import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation } from '../data/schema';
+import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation, SHOW_ALL_MITIGATED } from '../data/schema';
+import type { MitigatedVisibility } from '../data/schema';
 import type { Node, Edge } from '@xyflow/react';
 import { buildControlKey } from './controlFingerprint';
 
@@ -455,7 +456,7 @@ export async function generateExecutiveSummary(
   edges: Edge[],
   threats: ActiveThreat[],
   diagramImage: string | null,
-  hideMitigated = false,
+  mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
 ): Promise<void> {
   // Dynamically import jspdf and jspdf-autotable
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -465,7 +466,7 @@ export async function generateExecutiveSummary(
 
   // Mitigated threats are counted separately (or omitted when hidden)
   const { active: filteredThreats, mitigated: mitigatedThreats } =
-    partitionMitigatedThreats(threats, hideMitigated);
+    partitionMitigatedThreats(threats, mitigatedVisibility);
 
   // Cast to ExtendedJsPDF since jspdf-autotable adds lastAutoTable property
   const doc = new jsPDF({
@@ -729,7 +730,7 @@ export async function generateFullReport(
   threats: ActiveThreat[],
   diagramImage: string | null,
   implementedControls: Record<string, true> = {},
-  hideMitigated = false,
+  mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
 ): Promise<void> {
   // Dynamically import jspdf and jspdf-autotable
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -739,7 +740,7 @@ export async function generateFullReport(
 
   // Mitigated threats get their own section (or are omitted when hidden)
   const { active: filteredThreats, mitigated: mitigatedThreats } =
-    partitionMitigatedThreats(threats, hideMitigated);
+    partitionMitigatedThreats(threats, mitigatedVisibility);
 
   // Cast to ExtendedJsPDF since jspdf-autotable adds lastAutoTable property
   const doc = new jsPDF({

@@ -137,30 +137,78 @@ export interface ActiveThreat {
     mode: 'remove' | 'reduce';
     reductionPercent?: number;
   };
+  // Set when the user has ticked every control listed for this threat
+  // instance and markControlsMitigated is on (otherwise such a threat stays
+  // active). Applied after resolution (see
+  // markControlMitigatedThreats), so it never affects scoring.
+  controlsImplemented?: true;
 }
 
+// What mitigates a threat outright. Each kind has its own visibility toggle.
+export type MitigationKind = 'upstream' | 'connection' | 'controls';
+
 /**
- * Whether a threat is mitigated outright — removed by an upstream pathway
- * mitigation or protected by connection encryption — rather than active.
- * A 'reduce' pathway mitigation leaves the threat active at a lower score.
+ * How a threat is mitigated outright: removed by an upstream pathway
+ * mitigation, protected at the connection (e.g. the target enforces
+ * encryption), or every listed control ticked. Checked in that order, so a
+ * threat has at most one kind. Undefined for an active threat; a 'reduce'
+ * pathway mitigation leaves the threat active at a lower score.
  */
+export function getMitigationKind(threat: ActiveThreat): MitigationKind | undefined {
+  if (threat.pathwayMitigatedBy?.mode === 'remove') return 'upstream';
+  if (threat.mitigatedBy) return 'connection';
+  if (threat.controlsImplemented) return 'controls';
+  return undefined;
+}
+
 export function isThreatMitigated(threat: ActiveThreat): boolean {
-  return !!threat.mitigatedBy || threat.pathwayMitigatedBy?.mode === 'remove';
+  return getMitigationKind(threat) !== undefined;
+}
+
+export const CONTROLS_IMPLEMENTED_LABEL = 'All controls implemented';
+
+// Which kinds of mitigated threat to hide from the app and exported reports.
+// A hidden threat is dropped entirely; a shown one sits in the Mitigated group.
+export interface MitigatedVisibility {
+  hideUpstream: boolean;
+  hideConnection: boolean;
+  hideControls: boolean;
+}
+
+export const SHOW_ALL_MITIGATED: MitigatedVisibility = {
+  hideUpstream: false,
+  hideConnection: false,
+  hideControls: false,
+};
+
+export const HIDE_ALL_MITIGATED: MitigatedVisibility = {
+  hideUpstream: true,
+  hideConnection: true,
+  hideControls: true,
+};
+
+export function isMitigationKindHidden(kind: MitigationKind, visibility: MitigatedVisibility): boolean {
+  switch (kind) {
+    case 'upstream': return visibility.hideUpstream;
+    case 'connection': return visibility.hideConnection;
+    case 'controls': return visibility.hideControls;
+  }
 }
 
 /**
- * Split threats into active and mitigated for display or export. When
- * hideMitigated is set, mitigated threats are dropped entirely.
+ * Split threats into active and mitigated for display or export. Mitigated
+ * threats whose kind is hidden by `visibility` are dropped entirely.
  */
 export function partitionMitigatedThreats(
   threats: ActiveThreat[],
-  hideMitigated: boolean,
+  visibility: MitigatedVisibility,
 ): { active: ActiveThreat[]; mitigated: ActiveThreat[] } {
   const active: ActiveThreat[] = [];
   const mitigated: ActiveThreat[] = [];
   for (const threat of threats) {
-    if (!isThreatMitigated(threat)) active.push(threat);
-    else if (!hideMitigated) mitigated.push(threat);
+    const kind = getMitigationKind(threat);
+    if (!kind) active.push(threat);
+    else if (!isMitigationKindHidden(kind, visibility)) mitigated.push(threat);
   }
   return { active, mitigated };
 }
@@ -178,6 +226,9 @@ export function describeThreatMitigation(threat: ActiveThreat): string | undefin
   }
   if (threat.mitigatedBy) {
     return CONNECTION_MITIGATION_LABELS[threat.mitigatedBy];
+  }
+  if (threat.controlsImplemented) {
+    return CONTROLS_IMPLEMENTED_LABEL;
   }
   return undefined;
 }
@@ -272,9 +323,14 @@ export interface PathwayMitigationConfig {
 
 export interface PathwayMitigationSettings {
   enabled: boolean;  // Master toggle
-  // Hide mitigated threats (pathway removals and encrypted connections) in the
-  // app and in exported reports. Independent of the master toggle.
-  hideMitigated: boolean;
+  // Which mitigated threats to hide in the app and in exported reports.
+  // Display only: independent of the master toggle, and never part of
+  // resolution or risk scores.
+  mitigatedVisibility: MitigatedVisibility;
+  // Count a threat whose recommended controls are all ticked as mitigated, so
+  // it moves to the Mitigated group and out of risk totals. Display only.
+  // mitigatedVisibility.hideControls has no effect while this is off.
+  markControlsMitigated: boolean;
   mitigations: Record<PathwayMitigationType, PathwayMitigationConfig>;
 }
 
@@ -306,7 +362,8 @@ const MITIGATION_DEFAULTS: Partial<
 
 export const DEFAULT_PATHWAY_MITIGATION_SETTINGS: PathwayMitigationSettings = {
   enabled: false,
-  hideMitigated: false,
+  mitigatedVisibility: SHOW_ALL_MITIGATED,
+  markControlsMitigated: false,
   mitigations: Object.fromEntries(
     PATHWAY_MITIGATION_DEFINITIONS.map(m => [
       m.id,
@@ -317,8 +374,27 @@ export const DEFAULT_PATHWAY_MITIGATION_SETTINGS: PathwayMitigationSettings = {
 
 
 // Reconcile saved pathway mitigation settings with the current catalogue.
+// Files saved before per-kind visibility carry a single `hideMitigated`
+// boolean, which applies to every kind.
+type SavedPathwayMitigationSettings = Partial<Omit<PathwayMitigationSettings, 'mitigatedVisibility'>> & {
+  mitigatedVisibility?: Partial<MitigatedVisibility>;
+  hideMitigated?: boolean;
+};
+
+function normalizeMitigatedVisibility(saved: SavedPathwayMitigationSettings): MitigatedVisibility {
+  const legacy = typeof saved.hideMitigated === 'boolean'
+    ? (saved.hideMitigated ? HIDE_ALL_MITIGATED : SHOW_ALL_MITIGATED)
+    : SHOW_ALL_MITIGATED;
+  const v = saved.mitigatedVisibility ?? {};
+  return {
+    hideUpstream: typeof v.hideUpstream === 'boolean' ? v.hideUpstream : legacy.hideUpstream,
+    hideConnection: typeof v.hideConnection === 'boolean' ? v.hideConnection : legacy.hideConnection,
+    hideControls: typeof v.hideControls === 'boolean' ? v.hideControls : legacy.hideControls,
+  };
+}
+
 export function normalizePathwayMitigationSettings(
-  saved: Partial<PathwayMitigationSettings> | undefined,
+  saved: SavedPathwayMitigationSettings | undefined,
 ): PathwayMitigationSettings {
   if (!saved) return DEFAULT_PATHWAY_MITIGATION_SETTINGS;
 
@@ -327,9 +403,10 @@ export function normalizePathwayMitigationSettings(
 
   return {
     enabled: typeof saved.enabled === 'boolean' ? saved.enabled : DEFAULT_PATHWAY_MITIGATION_SETTINGS.enabled,
-    hideMitigated: typeof saved.hideMitigated === 'boolean'
-      ? saved.hideMitigated
-      : DEFAULT_PATHWAY_MITIGATION_SETTINGS.hideMitigated,
+    mitigatedVisibility: normalizeMitigatedVisibility(saved),
+    markControlsMitigated: typeof saved.markControlsMitigated === 'boolean'
+      ? saved.markControlsMitigated
+      : DEFAULT_PATHWAY_MITIGATION_SETTINGS.markControlsMitigated,
     mitigations: Object.fromEntries(
       PATHWAY_MITIGATION_DEFINITIONS.map(m => {
         const fallback = DEFAULT_PATHWAY_MITIGATION_SETTINGS.mitigations[m.id];

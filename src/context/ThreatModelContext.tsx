@@ -27,7 +27,7 @@ import { NETWORK_ZONE_LABELS, DEFAULT_PATHWAY_MITIGATION_SETTINGS, normalizePath
 import { resolveActiveThreats } from '../utils/threatResolver';
 import { getTechnologyById, registerCustomTechnology as registerCustomTechInCache, unregisterCustomTechnology as unregisterCustomTechInCache, registerCustomTechnologies as registerCustomTechsInCache, clearCustomTechnologies as clearCustomTechsInCache, loadProviders, providerFromTechId } from '../data';
 import { findBoundaryAtPosition, getNodeCenterPosition, calculateRelativePosition, calculateAbsolutePosition } from '../utils/boundaryUtils';
-import { pruneNodeControlKeys } from '../utils/controlFingerprint';
+import { pruneNodeControlKeys, markControlMitigatedThreats } from '../utils/controlFingerprint';
 import { loadPersistedModel, savePersistedModel, clearPersistedModel, modelHasContent } from '../utils/modelPersistence';
 import { showToast } from '../utils/toast';
 
@@ -1119,8 +1119,8 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
     const baseFingerprint = createThreatFingerprint(nodes, edges, boundaries);
     // Include pathway mitigation settings, severity overrides, and custom tech threatIds in fingerprint
     const customTechFingerprint = state.customTechnologies.map(t => `${t.id}:${t.threatIds.join(',')}`).join('|');
-    // hideMitigated only affects display, not resolution, so it stays out of the fingerprint
-    const { hideMitigated: _displayOnly, ...resolutionSettings } = state.pathwayMitigationSettings;
+    // mitigatedVisibility and markControlsMitigated only affect display, not resolution, so they stay out of the fingerprint
+    const { mitigatedVisibility: _displayOnly, markControlsMitigated: _alsoDisplayOnly, ...resolutionSettings } = state.pathwayMitigationSettings;
     const fingerprint = baseFingerprint + JSON.stringify(resolutionSettings) + JSON.stringify(state.severityOverrides) + customTechFingerprint;
     return { nodes, edges, boundaries, fingerprint, pathwayMitigationSettings: state.pathwayMitigationSettings, severityOverrides: state.severityOverrides };
   }, [state.nodes, state.edges, state.boundaries, state.pathwayMitigationSettings, state.severityOverrides, state.customTechnologies]);
@@ -1715,11 +1715,24 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
   }), [state.selectedNodeId, state.selectedEdgeId, state.selectedBoundaryId, state.selectedNodes, setSelectedNode, setSelectedEdge, setSelectedBoundary, setSelectedNodes, selectAll, deselectAll]);
 
   // 3. Threats - updates only when threat-relevant data changes (smart caching)
+  // Ticking controls must not re-resolve threats, so control-based mitigation
+  // is layered on top of the cached resolution rather than inside it. A threat
+  // with every control ticked only counts as mitigated when
+  // markControlsMitigated is on; otherwise it stays active, and the
+  // hideControls option has nothing to hide.
+  const { markControlsMitigated } = state.pathwayMitigationSettings;
+  const displayedThreats = useMemo(
+    () => markControlsMitigated
+      ? markControlMitigatedThreats(activeThreats, state.implementedControls)
+      : activeThreats,
+    [activeThreats, markControlsMitigated, state.implementedControls],
+  );
+
   const threatsValue = useMemo<ThreatsContextValue>(() => ({
-    activeThreats,
+    activeThreats: displayedThreats,
     severityOverrides: state.severityOverrides,
     implementedControls: state.implementedControls,
-  }), [activeThreats, state.severityOverrides, state.implementedControls]);
+  }), [displayedThreats, state.severityOverrides, state.implementedControls]);
 
   // 4. Actions - stable, never updates (all callbacks have empty or minimal deps)
   const actionsValue = useMemo<ActionsContextValue>(() => ({

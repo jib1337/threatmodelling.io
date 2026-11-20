@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Node } from '@xyflow/react';
 import type { ActiveThreat, TechNodeData, Threat } from '../data/schema';
+import { HIDE_ALL_MITIGATED, SHOW_ALL_MITIGATED } from '../data/schema';
 import { buildMarkdownReport } from './markdownExport';
 
 // --- fixtures --------------------------------------------------------------
@@ -91,10 +92,18 @@ describe('buildMarkdownReport', () => {
     expect(mitigated.indexOf('Removed Threat')).toBeLessThan(mitigated.indexOf('Intercepted Traffic'));
   });
 
-  it('omits mitigated threats entirely when hideMitigated is set', () => {
-    const md = buildMarkdownReport('M', [makeNode('n1', 'EC2')], [], [live, removed, encrypted], {}, true);
+  it('omits mitigated threats entirely when every kind is hidden', () => {
+    const md = buildMarkdownReport('M', [makeNode('n1', 'EC2')], [], [live, removed, encrypted], {}, HIDE_ALL_MITIGATED);
     expect(md).not.toContain('Mitigated Threats');
     expect(md).not.toContain('Removed Threat');
+    expect(md).not.toContain('Intercepted Traffic');
+  });
+
+  it('omits only the hidden kind of mitigated threat', () => {
+    const md = buildMarkdownReport('M', [makeNode('n1', 'EC2')], [], [live, removed, encrypted], {},
+      { ...SHOW_ALL_MITIGATED, hideConnection: true });
+    expect(md).toContain('Mitigated Threats');
+    expect(md).toContain('Removed Threat');
     expect(md).not.toContain('Intercepted Traffic');
   });
 

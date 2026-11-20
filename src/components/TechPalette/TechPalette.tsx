@@ -258,7 +258,7 @@ export default memo(function TechPalette() {
                     </span>
                     <div className="tech-item-info">
                       <div className="tech-item-name">{actor.name}</div>
-                      <div className="tech-item-category">{actor.category}</div>
+                      <div className="tech-item-category">{CATEGORY_LABELS[actor.category]}</div>
                     </div>
                   </div>
                 ))}

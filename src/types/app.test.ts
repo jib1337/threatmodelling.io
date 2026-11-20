@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { ActiveThreat, Threat } from '../data/schema';
-import { isThreatMitigated, partitionMitigatedThreats, describeThreatMitigation } from './app';
+import type { MitigatedVisibility } from './app';
+import {
+  isThreatMitigated,
+  getMitigationKind,
+  partitionMitigatedThreats,
+  describeThreatMitigation,
+  normalizePathwayMitigationSettings,
+  SHOW_ALL_MITIGATED,
+  HIDE_ALL_MITIGATED,
+} from './app';
 
 const threat: Threat = {
   id: 't-1',
@@ -46,6 +55,10 @@ describe('isThreatMitigated', () => {
   it('is true for an encrypted connection threat', () => {
     expect(isThreatMitigated(make({ isConnectionThreat: true, mitigatedBy: 'encrypted' }))).toBe(true);
   });
+
+  it('is true when every control is implemented', () => {
+    expect(isThreatMitigated(make({ controlsImplemented: true }))).toBe(true);
+  });
 });
 
 describe('describeThreatMitigation', () => {
@@ -56,6 +69,7 @@ describe('describeThreatMitigation', () => {
 
   it('uses the connection mitigation label for encrypted connections', () => {
     expect(describeThreatMitigation(make({ mitigatedBy: 'encrypted' }))).toBe('TLS Encrypted');
+    expect(describeThreatMitigation(make({ controlsImplemented: true }))).toBe('All controls implemented');
   });
 
   it('is undefined for threats that are not mitigated', () => {
@@ -64,23 +78,69 @@ describe('describeThreatMitigation', () => {
   });
 });
 
+describe('getMitigationKind', () => {
+  it('classifies each kind of mitigation', () => {
+    expect(getMitigationKind(make())).toBeUndefined();
+    expect(getMitigationKind(make({ pathwayMitigatedBy: pathway('reduce') }))).toBeUndefined();
+    expect(getMitigationKind(make({ pathwayMitigatedBy: pathway('remove') }))).toBe('upstream');
+    expect(getMitigationKind(make({ mitigatedBy: 'encrypted' }))).toBe('connection');
+    expect(getMitigationKind(make({ controlsImplemented: true }))).toBe('controls');
+  });
+
+  it('prefers upstream, then connection, then controls', () => {
+    expect(getMitigationKind(make({
+      pathwayMitigatedBy: pathway('remove'), mitigatedBy: 'encrypted', controlsImplemented: true,
+    }))).toBe('upstream');
+    expect(getMitigationKind(make({ mitigatedBy: 'encrypted', controlsImplemented: true }))).toBe('connection');
+  });
+});
+
 describe('partitionMitigatedThreats', () => {
   const active = make();
   const reduced = make({ pathwayMitigatedBy: pathway('reduce') });
   const removed = make({ pathwayMitigatedBy: pathway('remove') });
   const encrypted = make({ mitigatedBy: 'encrypted' });
+  const ticked = make({ controlsImplemented: true });
+  const all = [active, removed, reduced, encrypted, ticked];
 
   it('splits active from mitigated threats, preserving order', () => {
-    expect(partitionMitigatedThreats([active, removed, reduced, encrypted], false)).toEqual({
+    expect(partitionMitigatedThreats(all, SHOW_ALL_MITIGATED)).toEqual({
       active: [active, reduced],
-      mitigated: [removed, encrypted],
+      mitigated: [removed, encrypted, ticked],
     });
   });
 
-  it('drops mitigated threats when hidden', () => {
-    expect(partitionMitigatedThreats([active, removed, reduced, encrypted], true)).toEqual({
+  it('drops every mitigated threat when all kinds are hidden', () => {
+    expect(partitionMitigatedThreats(all, HIDE_ALL_MITIGATED)).toEqual({
       active: [active, reduced],
       mitigated: [],
     });
+  });
+
+  it('drops only the kinds that are hidden', () => {
+    const only = (key: keyof MitigatedVisibility) => ({ ...SHOW_ALL_MITIGATED, [key]: true });
+    expect(partitionMitigatedThreats(all, only('hideUpstream')).mitigated).toEqual([encrypted, ticked]);
+    expect(partitionMitigatedThreats(all, only('hideConnection')).mitigated).toEqual([removed, ticked]);
+    expect(partitionMitigatedThreats(all, only('hideControls')).mitigated).toEqual([removed, encrypted]);
+  });
+});
+
+describe('normalizePathwayMitigationSettings: mitigatedVisibility', () => {
+  it('shows everything when the setting is absent', () => {
+    expect(normalizePathwayMitigationSettings({ enabled: true }).mitigatedVisibility)
+      .toEqual(SHOW_ALL_MITIGATED);
+  });
+
+  it('maps a legacy hideMitigated boolean onto every kind', () => {
+    expect(normalizePathwayMitigationSettings({ hideMitigated: true }).mitigatedVisibility)
+      .toEqual(HIDE_ALL_MITIGATED);
+    expect(normalizePathwayMitigationSettings({ hideMitigated: false }).mitigatedVisibility)
+      .toEqual(SHOW_ALL_MITIGATED);
+  });
+
+  it('keeps per-kind values and fills in missing ones', () => {
+    expect(normalizePathwayMitigationSettings({
+      mitigatedVisibility: { hideConnection: true },
+    }).mitigatedVisibility).toEqual({ hideUpstream: false, hideConnection: true, hideControls: false });
   });
 });

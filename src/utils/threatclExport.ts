@@ -6,6 +6,7 @@ import type {
   DataSensitivity,
   StrideCategory,
   ThreatSeverity,
+  MitigatedVisibility,
 } from '../data/schema';
 import {
   DATA_SENSITIVITY_LABELS,
@@ -13,6 +14,8 @@ import {
   THREAT_SEVERITY_VALUES,
   partitionMitigatedThreats,
   describeThreatMitigation,
+  getMitigationKind,
+  SHOW_ALL_MITIGATED,
 } from '../data/schema';
 import { buildControlKey } from './controlFingerprint';
 
@@ -148,9 +151,11 @@ interface ThreatGroup {
 // "Upstream protection: AWS WAF (WAF Protection)".
 function mitigationControlDescription(at: ActiveThreat): string {
   const description = describeThreatMitigation(at) ?? '';
-  return at.pathwayMitigatedBy?.mode === 'remove'
-    ? `Upstream protection: ${description}`
-    : `Connection protection: ${description}`;
+  switch (getMitigationKind(at)) {
+    case 'upstream': return `Upstream protection: ${description}`;
+    case 'connection': return `Connection protection: ${description}`;
+    default: return `Implemented controls: ${description}`;
+  }
 }
 
 function severityRank(s: ThreatSeverity): number {
@@ -655,10 +660,10 @@ export function generateThreatclDocument(
   threats: ActiveThreat[],
   boundaries: Node<ZoneNodeData>[],
   implementedControls: Record<string, true> = {},
-  hideMitigated = false,
+  mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
 ): string {
   const { active: liveThreats, mitigated: mitigatedThreats } =
-    partitionMitigatedThreats(threats, hideMitigated);
+    partitionMitigatedThreats(threats, mitigatedVisibility);
 
   const sections: string[] = [];
   sections.push(renderHeader(modelName));
@@ -713,9 +718,9 @@ export function exportThreatcl(
   threats: ActiveThreat[],
   boundaries: Node<ZoneNodeData>[],
   implementedControls: Record<string, true> = {},
-  hideMitigated = false,
+  mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
 ): void {
-  const hcl = generateThreatclDocument(modelName, nodes, edges, threats, boundaries, implementedControls, hideMitigated);
+  const hcl = generateThreatclDocument(modelName, nodes, edges, threats, boundaries, implementedControls, mitigatedVisibility);
   const blob = new Blob([hcl], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

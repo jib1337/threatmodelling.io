@@ -137,7 +137,7 @@ function groupThreatsForDisplay(threats: ActiveThreat[]): {
 export default function ThreatSidebar() {
   const { activeThreats } = useThreats();
   const { pathwayMitigationSettings } = useSettings();
-  const hideMitigated = pathwayMitigationSettings.hideMitigated;
+  const mitigatedVisibility = pathwayMitigationSettings.mitigatedVisibility;
   const { selectedNodeId, selectedEdgeId, selectedBoundaryId, setSelectedNode, setSelectedEdge, setSelectedBoundary } = useSelection();
   const { nodes, edges } = useDiagramState();
   const [filterQuery, setFilterQuery] = useState('');
@@ -215,8 +215,8 @@ export default function ThreatSidebar() {
   // Split into active and mitigated threats. Mitigated threats are listed in
   // their own section (or dropped when hidden) and never count towards totals.
   const { active: selectionActiveThreats, mitigated: selectionMitigatedThreats } = useMemo(
-    () => partitionMitigatedThreats(selectionFilteredThreats, hideMitigated),
-    [selectionFilteredThreats, hideMitigated],
+    () => partitionMitigatedThreats(selectionFilteredThreats, mitigatedVisibility),
+    [selectionFilteredThreats, mitigatedVisibility],
   );
 
   const totalThreatCount = selectionActiveThreats.length;

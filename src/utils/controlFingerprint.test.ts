@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import type { ActiveThreat, Threat } from '../data/schema';
 import {
   hashControl,
   buildControlKey,
   pruneNodeControlKeys,
+  getThreatControlKeys,
+  areAllControlsImplemented,
+  markControlMitigatedThreats,
 } from './controlFingerprint';
 
 describe('hashControl', () => {
@@ -110,5 +114,82 @@ describe('pruneNodeControlKeys', () => {
     expect(pruned).toEqual({
       'node:n10:t1::bbbbbbbb': true,
     });
+  });
+});
+
+describe('control-based mitigation', () => {
+  const threat: Threat = {
+    id: 't-1',
+    name: 'Threat',
+    description: '',
+    severity: 'high',
+    stride: ['tampering'],
+    mitreTechniques: [],
+    controls: [
+      { id: 'c1', description: 'Enable MFA' },
+      { id: 'c2', description: 'Rotate keys' },
+    ],
+  } as Threat;
+
+  const make = (overrides: Partial<ActiveThreat> = {}): ActiveThreat => ({
+    threat,
+    sourceNodeId: 'n1',
+    sourceTechName: 'EC2',
+    sensitivity: 'internal',
+    riskScore: 6,
+    riskLevel: 'medium',
+    ...overrides,
+  });
+
+  const tickAll = (at: ActiveThreat): Record<string, true> =>
+    Object.fromEntries(getThreatControlKeys(at).map(k => [k, true as const]));
+
+  it('uses node-generic keys for a component threat', () => {
+    expect(getThreatControlKeys(make())).toEqual([
+      buildControlKey({ kind: 'node-generic', nodeId: 'n1', threatId: 't-1' }, 'Enable MFA'),
+      buildControlKey({ kind: 'node-generic', nodeId: 'n1', threatId: 't-1' }, 'Rotate keys'),
+    ]);
+  });
+
+  it('uses tech-specific mitigations in place of generic controls', () => {
+    expect(getThreatControlKeys(make({ techMitigations: ['Use IMDSv2'] }))).toEqual([
+      buildControlKey({ kind: 'node-tech', nodeId: 'n1', threatId: 't-1' }, 'Use IMDSv2'),
+    ]);
+  });
+
+  it('uses consolidated keys for connection and zone threats', () => {
+    expect(getThreatControlKeys(make({ isConnectionThreat: true }))[0])
+      .toBe(buildControlKey({ kind: 'connection', threatId: 't-1' }, 'Enable MFA'));
+    expect(getThreatControlKeys(make({ isZoneThreat: true }))[0])
+      .toBe(buildControlKey({ kind: 'zone', threatId: 't-1' }, 'Enable MFA'));
+  });
+
+  it('requires every control to be ticked', () => {
+    const at = make();
+    const [first] = getThreatControlKeys(at);
+    expect(areAllControlsImplemented(at, { [first]: true })).toBe(false);
+    expect(areAllControlsImplemented(at, tickAll(at))).toBe(true);
+  });
+
+  it('never treats a threat with no controls as fully implemented', () => {
+    expect(areAllControlsImplemented(make({ threat: { ...threat, controls: [] } }), {})).toBe(false);
+  });
+
+  it('flags only fully-ticked threats and keeps other mitigations as they are', () => {
+    const ticked = make();
+    const unticked = make({ sourceNodeId: 'n2' });
+    const encrypted = make({ isConnectionThreat: true, mitigatedBy: 'encrypted' });
+    const result = markControlMitigatedThreats(
+      [ticked, unticked, encrypted],
+      { ...tickAll(ticked), ...tickAll(encrypted) },
+    );
+    expect(result[0].controlsImplemented).toBe(true);
+    expect(result[1]).toBe(unticked);
+    expect(result[2]).toBe(encrypted);
+  });
+
+  it('returns the same array when nothing qualifies', () => {
+    const threats = [make()];
+    expect(markControlMitigatedThreats(threats, {})).toBe(threats);
   });
 });
