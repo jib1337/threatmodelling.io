@@ -187,7 +187,7 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
                   <li><button onClick={() => scrollToSection('section-zones')}>Network Zones</button></li>
                   <li><button onClick={() => scrollToSection('section-threats')}>Viewing Threats</button></li>
                   <li><button onClick={() => scrollToSection('section-risk')}>Understanding Risk Scores</button></li>
-                  <li><button onClick={() => scrollToSection('section-settings')}>Threat Model Settings</button></li>
+                  <li><button onClick={() => scrollToSection('section-settings')}>Model Settings</button></li>
                   <li><button onClick={() => scrollToSection('section-saving')}>Saving Your Work</button></li>
                   <li><button onClick={() => scrollToSection('section-shortcuts')}>Keyboard Shortcuts</button></li>
                 </ul>
@@ -496,8 +496,9 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
                   <p>
                     When protective technologies (WAF, DDoS protection, etc.) are positioned
                     upstream in the data flow, they can mitigate threats on downstream nodes.
-                    Depending on settings, threats are either removed entirely or reduced by
-                    a configurable percentage.
+                    This is off by default and is enabled in <em>Model Settings</em>. Depending
+                    on settings, threats are either removed entirely or reduced by a
+                    configurable percentage.
                   </p>
                   <p className="modifier-example">
                     Example: With WAF protection enabled at 50% reduction, an injection attack
@@ -513,13 +514,42 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
                 and restored when you import it.
               </p>
 
-              <h4>Pathway Mitigations</h4>
+              <h4>Threat Model Behaviour</h4>
               <p>
-                Pathway mitigations allow protective technologies positioned upstream in the
-                data flow to automatically mitigate threats on downstream nodes. This models
-                real-world scenarios where security controls like WAFs and DDoS protection
-                reduce risk for systems behind them. You can choose to either reduce the risk
-                score, or remove the threat entirely.
+                <strong>Pathway mitigations</strong> allow protective technologies positioned
+                upstream in the data flow to automatically mitigate threats on downstream nodes.
+                This models real-world scenarios where security controls like WAFs and DDoS
+                protection reduce risk for systems behind them.
+              </p>
+              <ul>
+                <li>Turn on <strong>Enable pathway mitigations</strong>, then switch on each
+                type of mitigation you want applied, such as DDoS protection or WAF
+                protection. All are off by default.</li>
+                <li>For each enabled type, choose <strong>Remove threats</strong> to treat
+                matching threats as mitigated, or <strong>Reduce severity</strong> to lower
+                their risk score by a percentage you set with the slider.</li>
+              </ul>
+
+              <h4>Display</h4>
+              <p>
+                Mitigated threats are listed in a separate <em>Mitigated</em> group in the
+                threats panel and don't count towards risk totals. The display options
+                control what counts as mitigated and what is shown:
+              </p>
+              <ul>
+                <li><strong>Mark threats with all recommended controls ticked as
+                mitigated</strong> - Moves a threat into the Mitigated group once every
+                one of its recommended controls is ticked.</li>
+                <li><strong>Mitigated threat visibility</strong> - Hides mitigated threats
+                from the threats panel and leaves them out of exported reports. You can
+                hide threats mitigated by upstream protection, connection threats
+                mitigated by enforced encryption, and threats mitigated by recommended
+                controls separately, or all at once. Hiding threats mitigated by
+                controls is only available while the option above is on.</li>
+              </ul>
+              <p>
+                Connection threats to a service that enforces encrypted connections are
+                always mitigated, whether or not pathway mitigations are enabled.
               </p>
 
               <h3 id="section-saving">Saving Your Work</h3>

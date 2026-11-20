@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Zap, Shield, Timer, Network, ShieldCheck, EyeOff, ListChecks } from 'lucide-react';
+import { Zap, Shield, Timer, Network, ShieldCheck, EyeOff, ListChecks, Route } from 'lucide-react';
 import { useSettings } from '../../context/ThreatModelContext';
 import type { PathwayMitigationType, MitigatedVisibility } from '../../data/schema';
 import {
@@ -166,45 +166,43 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     });
   };
 
-  const renderMitigationCard = (type: PathwayMitigationType) => {
+  // One sub-option per mitigation type, under "Enable pathway mitigations".
+  const renderMitigationOption = (type: PathwayMitigationType) => {
     const config = getConfig(type);
     const Icon = MITIGATION_ICONS[type] ?? FALLBACK_MITIGATION_ICON;
-    const isEnabled = pathwayMitigationSettings.enabled && config.enabled;
+    const masterOn = pathwayMitigationSettings.enabled;
     const allProviderNames = MITIGATION_PROVIDER_NAMES[type] ?? [];
     const providerNames = allProviderNames.slice(0, 3).join(', ');
     const moreCount = allProviderNames.length - 3;
 
     return (
-      <div
-        key={type}
-        className={`mitigation-card ${isEnabled ? 'enabled' : 'disabled'}`}
-      >
-        <div className="mitigation-header">
-          <div className="mitigation-title">
-            <Icon size={16} className="mitigation-icon" />
-            <span>{PATHWAY_MITIGATION_LABELS[type]}</span>
+      <div key={type} className="pathway-option">
+        <div className={`visibility-option ${masterOn ? '' : 'unavailable'}`}>
+          <div className="visibility-option-text">
+            <span className="visibility-option-label pathway-option-label">
+              <Icon size={14} className="mitigation-icon" />
+              {PATHWAY_MITIGATION_LABELS[type]}
+            </span>
+            <span className="mitigation-description">
+              {PATHWAY_MITIGATION_DESCRIPTIONS[type]}
+            </span>
+            <span className="mitigation-providers">
+              Technologies: {providerNames}{moreCount > 0 && `, +${moreCount} more`}
+            </span>
           </div>
           <button
             className={`toggle-switch ${config.enabled ? 'on' : 'off'}`}
             onClick={() => handleMitigationToggle(type)}
-            disabled={!pathwayMitigationSettings.enabled}
+            disabled={!masterOn}
             aria-label={`Toggle ${PATHWAY_MITIGATION_LABELS[type]}`}
+            aria-pressed={config.enabled}
           >
             <span className="toggle-knob" />
           </button>
         </div>
 
-        <div className="mitigation-info">
-          <span className="mitigation-description">
-            {PATHWAY_MITIGATION_DESCRIPTIONS[type]}
-          </span>
-          <span className="mitigation-providers">
-            Technologies: {providerNames}{moreCount > 0 && `, +${moreCount} more`}
-          </span>
-        </div>
-
-        {config.enabled && pathwayMitigationSettings.enabled && (
-          <div className="mitigation-options">
+        {config.enabled && masterOn && (
+          <div className="pathway-option-settings">
             <div className="mode-selector">
               <label className="mode-option">
                 <input
@@ -238,6 +236,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   step={PATHWAY_REDUCTION_STEP}
                   value={config.reductionPercent}
                   onChange={(e) => handleReductionChange(type, parseInt(e.target.value, 10))}
+                  aria-label={`${PATHWAY_MITIGATION_LABELS[type]} reduction percentage`}
                 />
               </div>
             )}
@@ -259,23 +258,46 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="settings-modal-content">
           <section className="settings-section">
             <div className="section-header">
-              <h3>Pathway Mitigations</h3>
-              <button
-                className={`toggle-switch master ${pathwayMitigationSettings.enabled ? 'on' : 'off'}`}
-                onClick={handleMasterToggle}
-                aria-label="Enable Pathway Mitigations"
-              >
-                <span className="toggle-knob" />
-              </button>
+              <h3>Threat Model Behaviour</h3>
             </div>
 
-            <p className="section-description">
-              When enabled, protective technologies upstream in the data flow will mitigate
-              threats on downstream nodes.
-            </p>
+            <div
+              className={`mitigation-card ${pathwayMitigationSettings.enabled ? 'enabled' : 'disabled'}`}
+              role="group"
+              aria-labelledby="pathway-mitigations-heading"
+            >
+              <div className="mitigation-header">
+                <div className="mitigation-title">
+                  <Route size={16} className="mitigation-icon" />
+                  <span id="pathway-mitigations-heading">Pathway mitigations</span>
+                </div>
+              </div>
 
-            <div className={`mitigation-cards ${!pathwayMitigationSettings.enabled ? 'master-disabled' : ''}`}>
-              {MITIGATION_TYPES.map(renderMitigationCard)}
+              <div className="mitigation-info">
+                <span className="mitigation-description">
+                  Protective technologies upstream in the data flow mitigate threats on downstream nodes.
+                </span>
+              </div>
+
+              <div className="mitigation-options visibility-options">
+                <div className="visibility-option">
+                  <div className="visibility-option-text">
+                    <span className="visibility-option-label">Enable pathway mitigations</span>
+                  </div>
+                  <button
+                    className={`toggle-switch ${pathwayMitigationSettings.enabled ? 'on' : 'off'}`}
+                    onClick={handleMasterToggle}
+                    aria-label="Enable pathway mitigations"
+                    aria-pressed={pathwayMitigationSettings.enabled}
+                  >
+                    <span className="toggle-knob" />
+                  </button>
+                </div>
+
+                <div className="visibility-sub-options">
+                  {MITIGATION_TYPES.map(renderMitigationOption)}
+                </div>
+              </div>
             </div>
           </section>
 
