@@ -91,63 +91,6 @@
   margin: 0 0 16px;
 }
 
-/* Toggle Switch */
-.toggle-switch {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  flex-shrink: 0;
-}
-
-.toggle-switch.off {
-  background: var(--bg-tertiary);
-}
-
-.toggle-switch.on {
-  background: var(--accent-blue);
-}
-
-.toggle-switch.master {
-  width: 48px;
-  height: 26px;
-  border-radius: 13px;
-}
-
-.toggle-switch:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.toggle-knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  background: var(--text-primary);
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px var(--shadow-color);
-}
-
-.toggle-switch.master .toggle-knob {
-  width: 20px;
-  height: 20px;
-}
-
-.toggle-switch.on .toggle-knob {
-  transform: translateX(20px);
-  background: var(--on-accent);
-}
-
-.toggle-switch.master.on .toggle-knob {
-  transform: translateX(22px);
-}
-
 /* Mitigation Cards */
 .mitigation-cards {
   display: flex;
@@ -191,6 +134,8 @@
 
 .mitigation-icon {
   color: var(--text-secondary);
+  /* Long titles wrap on narrow screens; without this the flex row squeezes the icon */
+  flex-shrink: 0;
 }
 
 .mitigation-card.enabled .mitigation-icon {
