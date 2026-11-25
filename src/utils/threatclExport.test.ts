@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -882,9 +882,17 @@ describe('custom controls', () => {
   });
 
   it('emits nothing extra when there are no custom controls', () => {
-    const without = generateThreatclDocument('M', nodes, [], [onN1, onN2], []);
-    const withEmpty = generateThreatclDocument('M', nodes, [], [onN1, onN2], [], {}, undefined, {});
-    expect(withEmpty).toBe(without);
+    // The document embeds the export time; freeze it so the two calls can't
+    // straddle a millisecond boundary
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      const without = generateThreatclDocument('M', nodes, [], [onN1, onN2], []);
+      const withEmpty = generateThreatclDocument('M', nodes, [], [onN1, onN2], [], {}, undefined, {});
+      expect(withEmpty).toBe(without);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -917,7 +925,7 @@ describe('HCL template escaping', () => {
   });
 });
 
-// Runs only when THREATCL_BIN points at an executable threatcl CLI. This lets
+// Runs only when THREATCL_BIN is set to an executable threatcl CLI. This lets
 // CI (and the developer locally) spot-check that our output is accepted by the
 // authoritative parser without making the test suite itself depend on Go.
 const threatclBin = process.env.THREATCL_BIN;
