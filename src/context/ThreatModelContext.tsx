@@ -22,12 +22,13 @@ import {
   addEdge,
 } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
-import type { Technology, ThreatModel, ActiveThreat, TechNodeData, ZoneNodeData, DataSensitivity, NetworkZone, ZoneNetworkType, ClipboardState, ClipboardNode, ClipboardEdge, ClipboardZone, PathwayMitigationSettings, ThreatSeverity, CloudProvider } from '../data/schema';
+import type { Technology, ThreatModel, ActiveThreat, TechNodeData, ZoneNodeData, DataSensitivity, NetworkZone, ZoneNetworkType, ClipboardState, ClipboardNode, ClipboardEdge, ClipboardZone, PathwayMitigationSettings, ThreatSeverity, CloudProvider, CustomControl, CustomControlsMap } from '../data/schema';
 import { NETWORK_ZONE_LABELS, DEFAULT_PATHWAY_MITIGATION_SETTINGS, normalizePathwayMitigationSettings } from '../data/schema';
 import { resolveActiveThreats } from '../utils/threatResolver';
 import { getTechnologyById, registerCustomTechnology as registerCustomTechInCache, unregisterCustomTechnology as unregisterCustomTechInCache, registerCustomTechnologies as registerCustomTechsInCache, clearCustomTechnologies as clearCustomTechsInCache, loadProviders, providerFromTechId } from '../data';
 import { findBoundaryAtPosition, getNodeCenterPosition, calculateRelativePosition, calculateAbsolutePosition } from '../utils/boundaryUtils';
-import { pruneNodeControlKeys, markControlMitigatedThreats } from '../utils/controlFingerprint';
+import { pruneNodeControlKeys, pruneNodeCustomControls, markControlMitigatedThreats, normalizeCustomControlDescription } from '../utils/controlFingerprint';
+import { addCustomControl, updateCustomControl, removeCustomControl, sanitizeCustomControls, pruneOrphanCustomControlTicks } from '../utils/customControls';
 import { loadPersistedModel, savePersistedModel, clearPersistedModel, modelHasContent } from '../utils/modelPersistence';
 import { showToast } from '../utils/toast';
 
@@ -43,6 +44,7 @@ interface DiagramState {
   customTechnologies: Technology[];
   severityOverrides: Record<string, ThreatSeverity>;
   implementedControls: Record<string, true>;
+  customControls: CustomControlsMap;
 }
 
 interface ThreatModelState {
@@ -52,9 +54,14 @@ interface ThreatModelState {
   customTechnologies: Technology[];
   severityOverrides: Record<string, ThreatSeverity>;
   implementedControls: Record<string, true>;
+  customControls: CustomControlsMap;
   modelName: string;
   history: DiagramState[];
   historyIndex: number;
+  // True after SAVE_HISTORY until the next UNDO/REDO: history holds snapshots
+  // taken *before* each action, so the state those actions produced isn't in
+  // history yet. UNDO saves it first so the step can be redone.
+  hasUnsavedTip: boolean;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   selectedBoundaryId: string | null;
@@ -113,7 +120,10 @@ type ThreatModelAction =
   | { type: 'REGISTER_CUSTOM_TECHNOLOGY'; payload: Technology }
   | { type: 'REMOVE_CUSTOM_TECHNOLOGY'; payload: { technologyId: string } }
   | { type: 'UPDATE_CUSTOM_TECHNOLOGY'; payload: Technology }
-  | { type: 'SET_CONTROL_IMPLEMENTED'; payload: { key: string; implemented: boolean } };
+  | { type: 'SET_CONTROL_IMPLEMENTED'; payload: { key: string; implemented: boolean } }
+  | { type: 'ADD_CUSTOM_CONTROL'; payload: { scopeKey: string; control: CustomControl } }
+  | { type: 'UPDATE_CUSTOM_CONTROL'; payload: { scopeKey: string; controlId: string; description: string } }
+  | { type: 'REMOVE_CUSTOM_CONTROL'; payload: { scopeKey: string; controlId: string } };
 
 // Initial state
 const initialState: ThreatModelState = {
@@ -123,9 +133,11 @@ const initialState: ThreatModelState = {
   customTechnologies: [],
   severityOverrides: {},
   implementedControls: {},
+  customControls: {},
   modelName: 'Untitled Threat Model',
-  history: [{ nodes: [], edges: [], boundaries: [], customTechnologies: [], severityOverrides: {}, implementedControls: {} }],
+  history: [],
   historyIndex: 0,
+  hasUnsavedTip: false,
   selectedNodeId: null,
   selectedEdgeId: null,
   selectedBoundaryId: null,
@@ -136,36 +148,80 @@ const initialState: ThreatModelState = {
   pathwayMitigationSettings: DEFAULT_PATHWAY_MITIGATION_SETTINGS,
 };
 
+initialState.history = [{
+  nodes: initialState.nodes,
+  edges: initialState.edges,
+  boundaries: initialState.boundaries,
+  customTechnologies: initialState.customTechnologies,
+  severityOverrides: initialState.severityOverrides,
+  implementedControls: initialState.implementedControls,
+  customControls: initialState.customControls,
+}];
+
 const MAX_HISTORY = 50;
 
-// Helper to save current state to history
-// Uses efficient slicing to avoid O(n) shift() operations
-function saveToHistory(state: ThreatModelState): ThreatModelState {
-  const newHistoryEntry: DiagramState = {
+function snapshotOf(state: ThreatModelState): DiagramState {
+  return {
     nodes: state.nodes,
     edges: state.edges,
     boundaries: state.boundaries,
     customTechnologies: state.customTechnologies,
     severityOverrides: state.severityOverrides,
     implementedControls: state.implementedControls,
+    customControls: state.customControls,
   };
+}
 
-  // Calculate how many entries to keep (remove future history if not at end)
-  const keepCount = state.historyIndex + 1;
+function isSameSnapshot(a: DiagramState, b: DiagramState): boolean {
+  return a.nodes === b.nodes
+    && a.edges === b.edges
+    && a.boundaries === b.boundaries
+    && a.customTechnologies === b.customTechnologies
+    && a.severityOverrides === b.severityOverrides
+    && a.implementedControls === b.implementedControls
+    && a.customControls === b.customControls;
+}
 
-  // Calculate start index to respect MAX_HISTORY limit
-  // If adding one more would exceed limit, drop oldest entries
-  const startIndex = keepCount >= MAX_HISTORY ? keepCount - MAX_HISTORY + 1 : 0;
+// Push the current state onto history, dropping any redo future and trimming
+// the oldest entries beyond MAX_HISTORY.
+function pushCurrentToHistory(state: ThreatModelState): Pick<ThreatModelState, 'history' | 'historyIndex'> {
+  const snapshot = snapshotOf(state);
+  const kept = state.history.slice(0, state.historyIndex + 1);
+  const next = kept.length > 0 && isSameSnapshot(kept[kept.length - 1], snapshot)
+    ? kept
+    : [...kept, snapshot];
+  const history = next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
+  return { history, historyIndex: history.length - 1 };
+}
 
-  // Single slice operation: removes future history AND trims oldest if needed
-  const history = startIndex > 0
-    ? [...state.history.slice(startIndex, keepCount), newHistoryEntry]
-    : [...state.history.slice(0, keepCount), newHistoryEntry];
+// Called (via SAVE_HISTORY) before every undoable action.
+function saveToHistory(state: ThreatModelState): ThreatModelState {
+  return { ...state, ...pushCurrentToHistory(state), hasUnsavedTip: true };
+}
 
+function restoreFromHistory(
+  state: ThreatModelState,
+  history: DiagramState[],
+  index: number,
+): ThreatModelState {
+  const historyState = history[index];
+  // Resync custom technologies in data layer
+  clearCustomTechsInCache();
+  if (historyState.customTechnologies?.length) {
+    registerCustomTechsInCache(historyState.customTechnologies);
+  }
   return {
     ...state,
+    nodes: historyState.nodes,
+    edges: historyState.edges,
+    boundaries: historyState.boundaries || [],
+    customTechnologies: historyState.customTechnologies || [],
+    severityOverrides: historyState.severityOverrides || {},
+    implementedControls: historyState.implementedControls || {},
+    customControls: historyState.customControls || {},
     history,
-    historyIndex: history.length - 1,
+    historyIndex: index,
+    hasUnsavedTip: false,
   };
 }
 
@@ -204,6 +260,7 @@ function threatModelReducer(
           edge => edge.source !== nodeId && edge.target !== nodeId
         ),
         implementedControls: pruneNodeControlKeys(state.implementedControls, nodeId),
+        customControls: pruneNodeCustomControls(state.customControls, nodeId),
       };
     }
 
@@ -236,10 +293,10 @@ function threatModelReducer(
 
     case 'CLEAR_DIAGRAM':
       clearCustomTechsInCache();
-      return { ...state, nodes: [], edges: [], boundaries: [], customTechnologies: [], severityOverrides: {}, implementedControls: {} };
+      return { ...state, nodes: [], edges: [], boundaries: [], customTechnologies: [], severityOverrides: {}, implementedControls: {}, customControls: {} };
 
     case 'IMPORT_MODEL': {
-      const { nodes: exportedNodes, edges: exportedEdges, zones: exportedZones = [], name, pathwayMitigationSettings: importedSettings, customTechnologies: importedCustomTechs = [], severityOverrides: importedSeverityOverrides, implementedControls: importedImplementedControls } = action.payload;
+      const { nodes: exportedNodes, edges: exportedEdges, zones: exportedZones = [], name, pathwayMitigationSettings: importedSettings, customTechnologies: importedCustomTechs = [], severityOverrides: importedSeverityOverrides, implementedControls: importedImplementedControls, customControls: importedCustomControls } = action.payload;
 
       // Validate and sanitize custom tech descriptions (max 150 chars)
       const sanitizedCustomTechs = importedCustomTechs.map(tech =>
@@ -307,6 +364,18 @@ function threatModelReducer(
         data: { label: ee.label || '' },
       }));
 
+      // Custom controls are user-authored free text from an untrusted file.
+      // Sanitise against the nodes that actually loaded, then drop ticks for
+      // any custom control that didn't survive.
+      const customControls = sanitizeCustomControls(
+        importedCustomControls,
+        new Set(nodes.map(n => n.id)),
+      );
+      const implementedControls = pruneOrphanCustomControlTicks(
+        importedImplementedControls ?? {},
+        customControls,
+      );
+
       // Load pathway mitigation settings from import, reconciled with the current catalogue's
       // mitigation types; older versions without the field get the defaults (feature OFF)
       const pathwayMitigationSettings = normalizePathwayMitigationSettings(importedSettings);
@@ -318,7 +387,8 @@ function threatModelReducer(
         boundaries,
         customTechnologies: sanitizedCustomTechs,
         severityOverrides: importedSeverityOverrides ?? {},
-        implementedControls: importedImplementedControls ?? {},
+        implementedControls,
+        customControls,
         modelName: name,
         selectedNodeId: null,
         selectedBoundaryId: null,
@@ -333,45 +403,23 @@ function threatModelReducer(
       return saveToHistory(state);
 
     case 'UNDO': {
-      if (state.historyIndex <= 0) return state;
-      const newIndex = state.historyIndex - 1;
-      const historyState = state.history[newIndex];
-      // Resync custom technologies in data layer
-      clearCustomTechsInCache();
-      if (historyState.customTechnologies?.length) {
-        registerCustomTechsInCache(historyState.customTechnologies);
+      // Save the state the last action produced first, so it can be redone;
+      // undo then steps back to the snapshot taken before that action.
+      const { history, historyIndex } = state.hasUnsavedTip
+        ? pushCurrentToHistory(state)
+        : state;
+      if (historyIndex <= 0) {
+        // Nothing older to go back to (the pending action was a no-op)
+        return state.hasUnsavedTip ? { ...state, hasUnsavedTip: false } : state;
       }
-      return {
-        ...state,
-        nodes: historyState.nodes,
-        edges: historyState.edges,
-        boundaries: historyState.boundaries || [],
-        customTechnologies: historyState.customTechnologies || [],
-        severityOverrides: historyState.severityOverrides || {},
-        implementedControls: historyState.implementedControls || {},
-        historyIndex: newIndex,
-      };
+      return restoreFromHistory(state, history, historyIndex - 1);
     }
 
     case 'REDO': {
-      if (state.historyIndex >= state.history.length - 1) return state;
-      const newIndex = state.historyIndex + 1;
-      const historyState = state.history[newIndex];
-      // Resync custom technologies in data layer
-      clearCustomTechsInCache();
-      if (historyState.customTechnologies?.length) {
-        registerCustomTechsInCache(historyState.customTechnologies);
-      }
-      return {
-        ...state,
-        nodes: historyState.nodes,
-        edges: historyState.edges,
-        boundaries: historyState.boundaries || [],
-        customTechnologies: historyState.customTechnologies || [],
-        severityOverrides: historyState.severityOverrides || {},
-        implementedControls: historyState.implementedControls || {},
-        historyIndex: newIndex,
-      };
+      // A pending tip means nothing has been undone since the last action, and
+      // SAVE_HISTORY already dropped any redo future.
+      if (state.hasUnsavedTip || state.historyIndex >= state.history.length - 1) return state;
+      return restoreFromHistory(state, state.history, state.historyIndex + 1);
     }
 
     case 'SET_SELECTED_NODE':
@@ -542,6 +590,14 @@ function threatModelReducer(
         nodes: state.nodes.filter(node => !nodeIdSet.has(node.id)),
         edges: state.edges.filter(
           edge => !nodeIdSet.has(edge.source) && !nodeIdSet.has(edge.target)
+        ),
+        implementedControls: nodeIds.reduce(
+          (acc, id) => pruneNodeControlKeys(acc, id),
+          state.implementedControls,
+        ),
+        customControls: nodeIds.reduce(
+          (acc, id) => pruneNodeCustomControls(acc, id),
+          state.customControls,
         ),
         selectedNodes: [],
         selectedNodeId: null,
@@ -782,6 +838,10 @@ function threatModelReducer(
         ...state,
         nodes: applyNodeChanges(action.payload, state.nodes),
         implementedControls: prunedControls,
+        customControls: removedIds.reduce(
+          (acc, id) => pruneNodeCustomControls(acc, id),
+          state.customControls,
+        ),
       };
     }
 
@@ -886,8 +946,6 @@ function threatModelReducer(
     case 'SET_CONTROL_IMPLEMENTED': {
       const { key, implemented } = action.payload;
       if (!implemented) {
-        // Remove from map so unchecked state is represented by absence,
-        // keeping the record sparse and exports clean.
         const { [key]: _, ...rest } = state.implementedControls;
         return { ...state, implementedControls: rest };
       }
@@ -895,6 +953,24 @@ function threatModelReducer(
         ...state,
         implementedControls: { ...state.implementedControls, [key]: true },
       };
+    }
+
+    case 'ADD_CUSTOM_CONTROL': {
+      const { scopeKey, control } = action.payload;
+      const customControls = addCustomControl(state.customControls, scopeKey, control);
+      return customControls === state.customControls ? state : { ...state, customControls };
+    }
+
+    case 'UPDATE_CUSTOM_CONTROL': {
+      const { scopeKey, controlId, description } = action.payload;
+      const customControls = updateCustomControl(state.customControls, scopeKey, controlId, description);
+      return customControls === state.customControls ? state : { ...state, customControls };
+    }
+
+    case 'REMOVE_CUSTOM_CONTROL': {
+      const { scopeKey, controlId } = action.payload;
+      const next = removeCustomControl(state.customControls, state.implementedControls, scopeKey, controlId);
+      return next.customControls === state.customControls ? state : { ...state, ...next };
     }
 
     default:
@@ -936,6 +1012,7 @@ interface ThreatsContextValue {
   activeThreats: ActiveThreat[];
   severityOverrides: Record<string, ThreatSeverity>;
   implementedControls: Record<string, true>;
+  customControls: CustomControlsMap;
 }
 
 // 4. Actions Context - stable action functions (never changes reference)
@@ -969,6 +1046,10 @@ interface ActionsContextValue {
   setSeverityOverride: (key: string, severity: ThreatSeverity | null) => void;
   setSeverityOverridesBatch: (overrides: Record<string, ThreatSeverity>) => void;
   setControlImplemented: (key: string, implemented: boolean) => void;
+  // Custom controls: scopeKey comes from customControlScopeKey(activeThreat)
+  addCustomControl: (scopeKey: string, description: string) => void;
+  updateCustomControl: (scopeKey: string, controlId: string, description: string) => void;
+  removeCustomControl: (scopeKey: string, controlId: string) => void;
   saveHistory: () => void;
 }
 
@@ -1169,8 +1250,8 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
   }, [threatRelevantData]);
 
   // Computed undo/redo state
-  const canUndo = state.historyIndex > 0;
-  const canRedo = state.historyIndex < state.history.length - 1;
+  const canUndo = state.historyIndex > 0 || state.hasUnsavedTip;
+  const canRedo = !state.hasUnsavedTip && state.historyIndex < state.history.length - 1;
 
   // Undo/Redo handlers
   const undo = useCallback(() => {
@@ -1258,7 +1339,7 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
   const exportModel = useCallback((): ThreatModel => {
     const now = new Date().toISOString();
     return {
-      version: '1.5',
+      version: '1.6',
       name: state.modelName,
       createdAt: now,
       updatedAt: now,
@@ -1303,8 +1384,11 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
       ...(Object.keys(state.implementedControls).length > 0 && {
         implementedControls: state.implementedControls,
       }),
+      ...(Object.keys(state.customControls).length > 0 && {
+        customControls: state.customControls,
+      }),
     };
-  }, [state.nodes, state.edges, state.boundaries, state.modelName, state.pathwayMitigationSettings, state.customTechnologies, state.severityOverrides, state.implementedControls]);
+  }, [state.nodes, state.edges, state.boundaries, state.modelName, state.pathwayMitigationSettings, state.customTechnologies, state.severityOverrides, state.implementedControls, state.customControls]);
 
   const importModel = useCallback(async (model: ThreatModel) => {
     // Sanitize custom tech descriptions before registering
@@ -1319,8 +1403,7 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
       };
     }
     // Determine which providers are referenced by the model's nodes and load
-    // them before dispatching — the IMPORT_MODEL reducer calls getTechnologyById
-    // synchronously, so provider data must be in the map before it runs.
+    // them before dispatching
     const neededProviders = new Set(
       model.nodes
         .map(n => providerFromTechId(n.technologyId))
@@ -1406,6 +1489,26 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
   const setControlImplemented = useCallback((key: string, implemented: boolean) => {
     dispatch({ type: 'SAVE_HISTORY' });
     dispatch({ type: 'SET_CONTROL_IMPLEMENTED', payload: { key, implemented } });
+  }, []);
+
+  // Blank input is rejected here, before SAVE_HISTORY, so it doesn't leave an
+  // empty undo step. The reducer re-normalises and enforces the remaining
+  // limits (per-scope cap, scope shape).
+  const addCustomControlAction = useCallback((scopeKey: string, description: string) => {
+    if (normalizeCustomControlDescription(description) === null) return;
+    dispatch({ type: 'SAVE_HISTORY' });
+    dispatch({ type: 'ADD_CUSTOM_CONTROL', payload: { scopeKey, control: { id: uuidv4(), description } } });
+  }, []);
+
+  const updateCustomControlAction = useCallback((scopeKey: string, controlId: string, description: string) => {
+    if (normalizeCustomControlDescription(description) === null) return;
+    dispatch({ type: 'SAVE_HISTORY' });
+    dispatch({ type: 'UPDATE_CUSTOM_CONTROL', payload: { scopeKey, controlId, description } });
+  }, []);
+
+  const removeCustomControlAction = useCallback((scopeKey: string, controlId: string) => {
+    dispatch({ type: 'SAVE_HISTORY' });
+    dispatch({ type: 'REMOVE_CUSTOM_CONTROL', payload: { scopeKey, controlId } });
   }, []);
 
   // Snapshot the current state into history without mutating anything else.
@@ -1723,16 +1826,17 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
   const { markControlsMitigated } = state.pathwayMitigationSettings;
   const displayedThreats = useMemo(
     () => markControlsMitigated
-      ? markControlMitigatedThreats(activeThreats, state.implementedControls)
+      ? markControlMitigatedThreats(activeThreats, state.implementedControls, state.customControls)
       : activeThreats,
-    [activeThreats, markControlsMitigated, state.implementedControls],
+    [activeThreats, markControlsMitigated, state.implementedControls, state.customControls],
   );
 
   const threatsValue = useMemo<ThreatsContextValue>(() => ({
     activeThreats: displayedThreats,
     severityOverrides: state.severityOverrides,
     implementedControls: state.implementedControls,
-  }), [displayedThreats, state.severityOverrides, state.implementedControls]);
+    customControls: state.customControls,
+  }), [displayedThreats, state.severityOverrides, state.implementedControls, state.customControls]);
 
   // 4. Actions - stable, never updates (all callbacks have empty or minimal deps)
   const actionsValue = useMemo<ActionsContextValue>(() => ({
@@ -1764,6 +1868,9 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
     setSeverityOverride,
     setSeverityOverridesBatch,
     setControlImplemented,
+    addCustomControl: addCustomControlAction,
+    updateCustomControl: updateCustomControlAction,
+    removeCustomControl: removeCustomControlAction,
     saveHistory,
   }), [
     addNode, removeNode, removeEdge, updateEdgeLabel,
@@ -1774,6 +1881,7 @@ export function ThreatModelProvider({ children }: { children: ReactNode }) {
     assignNodeToBoundary, setCenterCallback, centerOnPosition,
     setGetViewportCenterCallback, getViewportCenter, setFitViewCallback,
     setSeverityOverride, setSeverityOverridesBatch, setControlImplemented,
+    addCustomControlAction, updateCustomControlAction, removeCustomControlAction,
     saveHistory,
   ]);
 

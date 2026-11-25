@@ -507,6 +507,20 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
                 </div>
               </div>
 
+              <h4>Adding Your Own Controls</h4>
+              <p>
+                If you have a control in place, or plan to add one that isn't in the
+                recommended list, expand the threat and click <strong>Add control</strong> under
+                Mitigating Controls to add a short description of your control.
+              </p>
+              <ul>
+                <li>Controls added to a component's threat apply to that component only.</li>
+                <li>Controls added to a connection or zone threat are shared by every
+                connection or zone with that threat.</li>
+                <li>They are included in exported reports alongside the other mitigating
+                controls.</li>
+              </ul>
+
               <h3 id="section-settings">Model Settings</h3>
               <p>
                 Click the <strong>Settings</strong> button (gear icon) in the toolbar to access
@@ -537,9 +551,9 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
                 control what counts as mitigated and what is shown:
               </p>
               <ul>
-                <li><strong>Mark threats with all recommended controls ticked as
+                <li><strong>Mark threats with all mitigating controls ticked as
                 mitigated</strong> - Moves a threat into the Mitigated group once every
-                one of its recommended controls is ticked.</li>
+                one of its controls is ticked, including any you have added yourself.</li>
                 <li><strong>Mitigated threat visibility</strong> - Hides mitigated threats
                 from the threats panel and leaves them out of exported reports. You can
                 hide threats mitigated by upstream protection, connection threats
@@ -561,7 +575,7 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
               <ul>
                 <li>
                   <strong>JSON</strong> - Saves the complete threat model, including nodes,
-                  connections, zones, severity overrides and model settings. This is the only
+                  connections, zones, severity overrides, ticked and custom controls, and model settings. This is the only
                   format that can be re-imported into the tool, so use it whenever you want to
                   continue working on a model later or share it with someone else using this tool.
                 </li>

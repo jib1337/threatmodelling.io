@@ -14,6 +14,7 @@ import type {
   CloudProvider,
   ServiceCategory,
   StrideCategory,
+  CustomControlsMap,
 } from '../data/schema';
 import { HIDE_ALL_MITIGATED } from '../data/schema';
 import { generateThreatclDocument } from './threatclExport';
@@ -531,6 +532,16 @@ describe('generateThreatclDocument', () => {
     );
   });
 
+  it('leaves blank lines in heredocs empty rather than indented', () => {
+    const t = makeThreat({ id: 't-x', name: 'X' });
+    const hcl = generateThreatclDocument(
+      'M', [makeNode('n1', 'Host')], [], [makeActiveThreat(t, { sourceNodeId: 'n1' })], [],
+    );
+    const heredoc = hcl.match(/<<-EOT\n([\s\S]*?)\n\s*EOT/)![1];
+    expect(heredoc.split('\n')).toContain('');
+    expect(heredoc).not.toMatch(/^[ \t]+$/m);
+  });
+
   it('uses indent-stripping heredocs (<<-EOT) for descriptions', () => {
     const { nodes, edges, boundaries, activeThreats } = buildRepresentativeModel();
     const hcl = generateThreatclDocument('M', nodes, edges, activeThreats, boundaries);
@@ -771,6 +782,141 @@ describe('generateThreatclDocument', () => {
 
 // --- optional integration test against the real threatcl binary --------------
 
+describe('custom controls', () => {
+  const threat = makeThreat({
+    id: 't-x',
+    name: 'X',
+    controls: [{ id: 'ctrl-x-1', description: 'Step one' }],
+  });
+  const nodes = [makeNode('n1', 'Host'), makeNode('n2', 'Other')];
+  const onN1 = makeActiveThreat(threat, { sourceNodeId: 'n1' });
+  const onN2 = makeActiveThreat(threat, { sourceNodeId: 'n2', sourceTechName: 'Other' });
+
+  function threatBlock(hcl: string, name: string): string {
+    const block = hcl.match(new RegExp(`threat "${name}" \\{[\\s\\S]+?\\n  \\}`));
+    if (!block) throw new Error(`threat block "${name}" not found`);
+    return block[0];
+  }
+
+  // [label, description, implemented] for each control block, in order
+  function controlsOf(hcl: string, name: string): Array<[string, string, boolean]> {
+    return Array.from(
+      threatBlock(hcl, name).matchAll(/control "([^"]+)" \{\n\s+description = "((?:[^"\\]|\\.)*)"\n\s+implemented = (true|false)/g),
+      m => [m[1], m[2], m[3] === 'true'] as [string, string, boolean],
+    );
+  }
+
+  const both: CustomControlsMap = {
+    'node:n1:t-x': [{ id: 'a', description: 'Rotate keys' }],
+    'node:n2:t-x': [{ id: 'b', description: 'Rotate keys' }],
+  };
+
+  it('emits custom controls after catalogue controls, named custom-N', () => {
+    const custom: CustomControlsMap = {
+      'node:n1:t-x': [{ id: 'a', description: 'Rotate keys' }, { id: 'b', description: 'Pen test' }],
+    };
+    const hcl = generateThreatclDocument('M', nodes, [], [onN1], [], {}, undefined, custom);
+    expect(controlsOf(hcl, 'X').map(([label, d]) => [label, d])).toEqual([
+      ['ctrl-x-1', 'Step one'],
+      ['custom-1', 'Rotate keys'],
+      ['custom-2', 'Pen test'],
+    ]);
+  });
+
+  it('merges the same description across nodes into one control', () => {
+    const hcl = generateThreatclDocument('M', nodes, [], [onN1, onN2], [], {}, undefined, both);
+    expect(controlsOf(hcl, 'X').filter(([, d]) => d === 'Rotate keys')).toHaveLength(1);
+  });
+
+  it('is implemented only when every contributing node has ticked it', () => {
+    const tickedN1 = { 'node:n1:t-x::custom:a': true as const };
+    const tickedBoth = { ...tickedN1, 'node:n2:t-x::custom:b': true as const };
+    const flag = (implemented: Record<string, true>) =>
+      controlsOf(generateThreatclDocument('M', nodes, [], [onN1, onN2], [], implemented, undefined, both), 'X')
+        .find(([label]) => label === 'custom-1')![2];
+    expect(flag(tickedN1)).toBe(false);
+    expect(flag(tickedBoth)).toBe(true);
+  });
+
+  it('stays unimplemented when a contributing node lacks the control', () => {
+    const onlyN1: CustomControlsMap = { 'node:n1:t-x': [{ id: 'a', description: 'Rotate keys' }] };
+    const hcl = generateThreatclDocument(
+      'M', nodes, [], [onN1, onN2], [], { 'node:n1:t-x::custom:a': true }, undefined, onlyN1,
+    );
+    expect(controlsOf(hcl, 'X').find(([label]) => label === 'custom-1')![2]).toBe(false);
+  });
+
+  it('uses the consolidated scope for connection threats', () => {
+    const conn = makeActiveThreat(makeThreat({ id: 't-c', name: 'C', controls: [] }), {
+      isConnectionThreat: true,
+      connectionInfo: { edgeId: 'e1', sourceNodeName: 'Host', targetNodeName: 'Other' },
+    });
+    const custom: CustomControlsMap = { 'connection:t-c': [{ id: 'a', description: 'mTLS' }] };
+    const hcl = generateThreatclDocument(
+      'M', nodes, [makeEdge('e1', 'n1', 'n2')], [conn], [], { 'connection:t-c::custom:a': true }, undefined, custom,
+    );
+    expect(controlsOf(hcl, 'C')).toEqual([['custom-1', 'mTLS', true]]);
+  });
+
+  it('puts MITRE attributes on the first custom control when the catalogue has none', () => {
+    const bare = makeThreat({
+      id: 't-m', name: 'M', controls: [],
+      mitreTechniques: [{ id: 'T1078', name: 'Valid Accounts', tactic: 'Initial Access' }],
+    });
+    const custom: CustomControlsMap = { 'node:n1:t-m': [{ id: 'a', description: 'Only control' }] };
+    const hcl = generateThreatclDocument(
+      'M', nodes, [], [makeActiveThreat(bare, { sourceNodeId: 'n1' })], [], {}, undefined, custom,
+    );
+    expect(threatBlock(hcl, 'M')).toMatch(/control "custom-1" \{[\s\S]+attribute "MITRE T1078"/);
+  });
+
+  it('places custom controls before mitigation controls', () => {
+    const mitigated = makeActiveThreat(threat, {
+      sourceNodeId: 'n2',
+      sourceTechName: 'Other',
+      mitigatedBy: 'encrypted',
+    });
+    const custom: CustomControlsMap = { 'node:n1:t-x': [{ id: 'a', description: 'Rotate keys' }] };
+    const hcl = generateThreatclDocument('M', nodes, [], [onN1, mitigated], [], {}, undefined, custom);
+    expect(controlsOf(hcl, 'X').map(([label]) => label)).toEqual(['ctrl-x-1', 'custom-1', 'mitigation-1']);
+  });
+
+  it('emits nothing extra when there are no custom controls', () => {
+    const without = generateThreatclDocument('M', nodes, [], [onN1, onN2], []);
+    const withEmpty = generateThreatclDocument('M', nodes, [], [onN1, onN2], [], {}, undefined, {});
+    expect(withEmpty).toBe(without);
+  });
+});
+
+describe('HCL template escaping', () => {
+  it('makes ${...} and %{...} literal in quoted strings', () => {
+    const t = makeThreat({ id: 't-x', name: 'X', controls: [] });
+    const custom: CustomControlsMap = {
+      'node:n1:t-x': [{ id: 'a', description: 'Use ${var.secret} and %{if x}y%{endif} with "quotes" and $plain {braces}' }],
+    };
+    const hcl = generateThreatclDocument(
+      'M', [makeNode('n1', 'Host')], [], [makeActiveThreat(t, { sourceNodeId: 'n1' })], [], {}, undefined, custom,
+    );
+    expect(hcl).toContain(
+      'description = "Use $${var.secret} and %%{if x}y%%{endif} with \\"quotes\\" and $plain {braces}"',
+    );
+    expect(hcl).not.toMatch(/(?<!\$)\$\{var/);
+  });
+
+  it('escapes template sequences inside heredoc descriptions too', () => {
+    const t = makeThreat({ id: 't-x', name: 'X' });
+    const hcl = generateThreatclDocument(
+      'M',
+      [makeNode('n1', 'Host', { customName: 'web-${env}' })],
+      [],
+      [makeActiveThreat(t, { sourceNodeId: 'n1', sourceTechName: 'web-${env}' })],
+      [],
+    );
+    expect(hcl).toContain('Affects components: web-$${env}');
+    expect(hcl).not.toMatch(/(?<!\$)\$\{env\}/);
+  });
+});
+
 // Runs only when THREATCL_BIN points at an executable threatcl CLI. This lets
 // CI (and the developer locally) spot-check that our output is accepted by the
 // authoritative parser without making the test suite itself depend on Go.
@@ -819,6 +965,57 @@ describeIfBin('threatcl binary validation', () => {
     writeFileSync(file, hcl);
     const output = execFileSync(threatclBin!, ['validate', file], { encoding: 'utf8' });
     expect(output).toMatch(/Validated 1 threatmodels/);
+  });
+
+  it('validates custom controls and round-trips template characters literally', () => {
+    const raw = 'Use ${var.secret} and %{if x}y%{endif} with "quotes" and a \\ backslash';
+    const t = makeThreat({ id: 't-x', name: 'Custom Threat' });
+    const nodes = [
+      makeNode('n1', 'Host', { customName: 'web-${env}' }),
+      makeNode('n2', 'Other'),
+    ];
+    const hcl = generateThreatclDocument(
+      'Custom Controls',
+      nodes,
+      [],
+      [
+        makeActiveThreat(t, { sourceNodeId: 'n1', sourceTechName: 'web-${env}' }),
+        makeActiveThreat(t, { sourceNodeId: 'n2', sourceTechName: 'Other' }),
+      ],
+      [],
+      // Ticked on both nodes for the first, only on n1 for the second
+      {
+        'node:n1:t-x::custom:a': true,
+        'node:n2:t-x::custom:b': true,
+        'node:n1:t-x::custom:c': true,
+      },
+      undefined,
+      {
+        'node:n1:t-x': [{ id: 'a', description: raw }, { id: 'c', description: 'Partly done' }],
+        'node:n2:t-x': [{ id: 'b', description: raw }, { id: 'd', description: 'Partly done' }],
+      },
+    );
+
+    const dir = mkdtempSync(join(tmpdir(), 'threatcl-test-'));
+    const file = join(dir, 'model.hcl');
+    writeFileSync(file, hcl);
+    const output = execFileSync(threatclBin!, ['validate', file], { encoding: 'utf8' });
+    expect(output).toMatch(/Validated 1 threatmodels/);
+
+    // threatcl's own parse of the file must give back the original text
+    const exported = JSON.parse(
+      execFileSync(threatclBin!, ['export', '-format=json', file], { encoding: 'utf8' }),
+    ) as Array<{ threat: Array<{ name: string; description: string; expandedControl: Array<{ name: string; description: string; implemented?: boolean }> }> }>;
+    const threat = exported[0].threat.find(x => x.name === 'Custom Threat')!;
+    expect(threat.description).toContain('web-${env}');
+    // Blank lines come back empty, not as runs of indentation
+    expect(threat.description).not.toMatch(/^[ \t]+$/m);
+    const custom = threat.expandedControl.filter(c => c.name.startsWith('custom-'));
+    expect(custom).toEqual([
+      expect.objectContaining({ name: 'custom-1', description: raw, implemented: true }),
+      expect.objectContaining({ name: 'custom-2', description: 'Partly done' }),
+    ]);
+    expect(custom[1].implemented ?? false).toBe(false);
   });
 
   it('validates a minimal empty-ish model', () => {

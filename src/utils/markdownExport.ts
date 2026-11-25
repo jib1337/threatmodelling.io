@@ -1,8 +1,9 @@
-import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType } from '../data/schema';
+import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType, CustomControlsMap } from '../data/schema';
 import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation, SHOW_ALL_MITIGATED } from '../data/schema';
 import type { MitigatedVisibility } from '../data/schema';
 import type { Node, Edge } from '@xyflow/react';
-import { buildControlKey } from './controlFingerprint';
+import { buildControlKey, buildCustomControlScope, customControlScopeKey } from './controlFingerprint';
+import { getCustomControlReportItems } from './customControls';
 
 // Unicode ballot boxes render cleanly inside Markdown table cells where GFM
 // task-list syntax is inert.
@@ -14,6 +15,27 @@ function renderControlLine(
   const checkbox = implemented ? '☑' : '☐';
   const body = implemented ? `~~${escape(description)}~~` : escape(description);
   return `${checkbox} ${body}`;
+}
+
+// Custom controls are free text from the user, or from whoever wrote an
+// imported file, so they get stricter escaping than catalogue content.
+function escapeUserText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/([\\`*_{}[\]()#+!|~-])/g, '\\$1');
+}
+
+// Custom control lines for a threat's Mitigating Controls cell. They read
+// the same as catalogue controls; only the escaping differs.
+function renderCustomControlLines(
+  scopeKey: string,
+  customControls: CustomControlsMap,
+  implementedControls: Record<string, true>,
+): string[] {
+  return getCustomControlReportItems(scopeKey, customControls, implementedControls)
+    .map(item => renderControlLine(item.text, item.implemented, escapeUserText));
 }
 
 interface ComponentSummary {
@@ -207,6 +229,7 @@ function generateComponentDetails(
   edges: Edge[],
   threats: ActiveThreat[],
   implementedControls: Record<string, true>,
+  customControls: CustomControlsMap,
 ): string {
   const componentMap = groupThreatsByComponent(nodes, edges, threats);
   const components = Array.from(componentMap.entries())
@@ -248,19 +271,23 @@ function generateComponentDetails(
       const keyScope = activeThreat.isConnectionThreat
         ? { kind: 'connection' as const, threatId: threat.id }
         : null;
-      const controlsList = activeThreat.techMitigations && activeThreat.techMitigations.length > 0
+      const catalogueLines = activeThreat.techMitigations && activeThreat.techMitigations.length > 0
         ? activeThreat.techMitigations.map(m => {
             const key = keyScope
               ? buildControlKey(keyScope, m)
               : buildControlKey({ kind: 'node-tech', nodeId: activeThreat.sourceNodeId, threatId: threat.id }, m);
             return renderControlLine(m, !!implementedControls[key], escapeMarkdown);
-          }).join('<br>')
+          })
         : threat.controls.map(control => {
             const key = keyScope
               ? buildControlKey(keyScope, control.description)
               : buildControlKey({ kind: 'node-generic', nodeId: activeThreat.sourceNodeId, threatId: threat.id }, control.description);
             return renderControlLine(control.description, !!implementedControls[key], escapeMarkdown);
-          }).join('<br>');
+          });
+      const controlsList = [
+        ...catalogueLines,
+        ...renderCustomControlLines(customControlScopeKey(activeThreat), customControls, implementedControls),
+      ].join('<br>');
 
       md += `#### ${threatTitle}
 
@@ -396,6 +423,7 @@ The following components have been excluded from threat analysis:
 function generateZoneThreatDetails(
   threats: ActiveThreat[],
   implementedControls: Record<string, true>,
+  customControls: CustomControlsMap,
 ): string {
   const groupedZoneThreats = groupZoneThreats(threats);
 
@@ -422,12 +450,17 @@ The following threats apply to private network zones in the architecture.
       .join(', ');
 
     // Mitigating Controls (zone scope — consolidated per threat id)
-    const controlsList = threat.controls
-      .map(control => {
+    const controlsList = [
+      ...threat.controls.map(control => {
         const key = buildControlKey({ kind: 'zone', threatId: threat.id }, control.description);
         return renderControlLine(control.description, !!implementedControls[key], escapeMarkdown);
-      })
-      .join('<br>');
+      }),
+      ...renderCustomControlLines(
+        buildCustomControlScope({ kind: 'zone', threatId: threat.id }),
+        customControls,
+        implementedControls,
+      ),
+    ].join('<br>');
 
     // Affected zones list
     const zonesList = groupedThreat.zones
@@ -484,6 +517,7 @@ export function buildMarkdownReport(
   threats: ActiveThreat[],
   implementedControls: Record<string, true> = {},
   mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
+  customControls: CustomControlsMap = {},
 ): string {
   // Mitigated threats are reported in their own section (or omitted when hidden)
   const { active: filteredThreats, mitigated: mitigatedThreats } =
@@ -497,8 +531,8 @@ export function buildMarkdownReport(
     generateRiskDistribution(filteredThreats),
     generateTopThreats(filteredThreats),
     generateComponentsSummary(nodes, edges, filteredThreats),
-    generateComponentDetails(nodes, edges, filteredThreats, implementedControls),
-    generateZoneThreatDetails(filteredThreats, implementedControls),
+    generateComponentDetails(nodes, edges, filteredThreats, implementedControls, customControls),
+    generateZoneThreatDetails(filteredThreats, implementedControls, customControls),
     generateMitigatedThreats(mitigatedThreats),
     generateOutOfScopeSection(nodes),
     generateFooter(generatedAt),
@@ -512,7 +546,8 @@ export async function generateMarkdownReport(
   threats: ActiveThreat[],
   implementedControls: Record<string, true> = {},
   mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
+  customControls: CustomControlsMap = {},
 ): Promise<void> {
-  const markdown = buildMarkdownReport(modelName, nodes, edges, threats, implementedControls, mitigatedVisibility);
+  const markdown = buildMarkdownReport(modelName, nodes, edges, threats, implementedControls, mitigatedVisibility, customControls);
   downloadMarkdown(markdown, modelName);
 }

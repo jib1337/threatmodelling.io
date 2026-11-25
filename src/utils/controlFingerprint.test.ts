@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import type { ActiveThreat, Threat } from '../data/schema';
+import type { ActiveThreat, CustomControlsMap, Threat } from '../data/schema';
+import { MAX_CUSTOM_CONTROL_LENGTH } from '../data/schema';
 import {
   hashControl,
+  customControlScopeKey,
+  buildCustomControlKey,
+  getCustomControls,
+  normalizeCustomControlDescription,
+  pruneNodeCustomControls,
   buildControlKey,
   pruneNodeControlKeys,
   getThreatControlKeys,
@@ -191,5 +197,165 @@ describe('control-based mitigation', () => {
   it('returns the same array when nothing qualifies', () => {
     const threats = [make()];
     expect(markControlMitigatedThreats(threats, {})).toBe(threats);
+  });
+});
+
+describe('custom controls', () => {
+  const threat: Threat = {
+    id: 't-1',
+    name: 'Threat',
+    description: '',
+    severity: 'high',
+    stride: ['tampering'],
+    mitreTechniques: [],
+    controls: [{ id: 'c1', description: 'Enable MFA' }],
+  } as Threat;
+
+  const make = (overrides: Partial<ActiveThreat> = {}): ActiveThreat => ({
+    threat,
+    sourceNodeId: 'n1',
+    sourceTechName: 'EC2',
+    sensitivity: 'internal',
+    riskScore: 6,
+    riskLevel: 'medium',
+    ...overrides,
+  });
+
+  const custom: CustomControlsMap = {
+    'node:n1:t-1': [{ id: 'cc1', description: 'Quarterly access review' }],
+    'connection:t-1': [{ id: 'cc2', description: 'mTLS between services' }],
+    'zone:t-1': [{ id: 'cc3', description: 'Egress allow-list' }],
+  };
+
+  const tick = (keys: string[]): Record<string, true> =>
+    Object.fromEntries(keys.map(k => [k, true as const]));
+
+  describe('customControlScopeKey', () => {
+    it('is per node for component threats', () => {
+      expect(customControlScopeKey(make())).toBe('node:n1:t-1');
+      expect(customControlScopeKey(make({ techMitigations: ['Use IMDSv2'] }))).toBe('node:n1:t-1');
+    });
+
+    it('is consolidated per threat for connections and zones', () => {
+      expect(customControlScopeKey(make({ isConnectionThreat: true }))).toBe('connection:t-1');
+      expect(customControlScopeKey(make({ isZoneThreat: true }))).toBe('zone:t-1');
+    });
+  });
+
+  describe('buildCustomControlKey', () => {
+    it('appends a custom:<id> segment to the scope', () => {
+      expect(buildCustomControlKey('node:n1:t-1', 'cc1')).toBe('node:n1:t-1::custom:cc1');
+    });
+
+    it('never collides with a catalogue key for the same scope', () => {
+      const catalogue = buildControlKey({ kind: 'node-generic', nodeId: 'n1', threatId: 't-1' }, 'cc1');
+      expect(buildCustomControlKey('node:n1:t-1', 'cc1')).not.toBe(catalogue);
+    });
+
+    it('is cleared by pruneNodeControlKeys along with the node\'s other ticks', () => {
+      const key = buildCustomControlKey('node:n1:t-1', 'cc1');
+      expect(pruneNodeControlKeys({ [key]: true }, 'n1')).toEqual({});
+    });
+  });
+
+  describe('getCustomControls', () => {
+    it('returns the controls for the instance\'s scope', () => {
+      expect(getCustomControls(make(), custom)).toEqual(custom['node:n1:t-1']);
+      expect(getCustomControls(make({ isZoneThreat: true }), custom)).toEqual(custom['zone:t-1']);
+    });
+
+    it('returns an empty list for another node', () => {
+      expect(getCustomControls(make({ sourceNodeId: 'n2' }), custom)).toEqual([]);
+    });
+  });
+
+  describe('getThreatControlKeys with custom controls', () => {
+    it('appends custom keys after the catalogue keys', () => {
+      expect(getThreatControlKeys(make(), custom)).toEqual([
+        buildControlKey({ kind: 'node-generic', nodeId: 'n1', threatId: 't-1' }, 'Enable MFA'),
+        'node:n1:t-1::custom:cc1',
+      ]);
+    });
+
+    it('appends custom keys after tech-specific mitigations too', () => {
+      expect(getThreatControlKeys(make({ techMitigations: ['Use IMDSv2'] }), custom)).toEqual([
+        buildControlKey({ kind: 'node-tech', nodeId: 'n1', threatId: 't-1' }, 'Use IMDSv2'),
+        'node:n1:t-1::custom:cc1',
+      ]);
+    });
+
+    it('uses consolidated scopes for connection and zone threats', () => {
+      const connectionKeys = getThreatControlKeys(make({ isConnectionThreat: true }), custom);
+      expect(connectionKeys[connectionKeys.length - 1]).toBe('connection:t-1::custom:cc2');
+      const zoneKeys = getThreatControlKeys(make({ isZoneThreat: true }), custom);
+      expect(zoneKeys[zoneKeys.length - 1]).toBe('zone:t-1::custom:cc3');
+    });
+  });
+
+  describe('mitigation with custom controls', () => {
+    it('requires custom controls to be ticked as well as catalogue ones', () => {
+      const at = make();
+      const [catalogueKey, customKey] = getThreatControlKeys(at, custom);
+      expect(areAllControlsImplemented(at, tick([catalogueKey]), custom)).toBe(false);
+      expect(areAllControlsImplemented(at, tick([catalogueKey, customKey]), custom)).toBe(true);
+    });
+
+    it('lets a threat with no catalogue controls be mitigated by its custom ones', () => {
+      const at = make({ threat: { ...threat, controls: [] } });
+      expect(areAllControlsImplemented(at, {}, custom)).toBe(false);
+      expect(areAllControlsImplemented(at, tick(['node:n1:t-1::custom:cc1']), custom)).toBe(true);
+    });
+
+    it('un-mitigates a threat when an unticked custom control is added', () => {
+      const at = make();
+      const ticks = tick(getThreatControlKeys(at));
+      expect(markControlMitigatedThreats([at], ticks)[0].controlsImplemented).toBe(true);
+      expect(markControlMitigatedThreats([at], ticks, custom)[0].controlsImplemented).toBeUndefined();
+    });
+  });
+
+  describe('normalizeCustomControlDescription', () => {
+    it('trims and collapses whitespace, including newlines', () => {
+      expect(normalizeCustomControlDescription('  Rotate\n\nkeys   quarterly ')).toBe('Rotate keys quarterly');
+    });
+
+    it('returns null for blank input', () => {
+      expect(normalizeCustomControlDescription('')).toBeNull();
+      expect(normalizeCustomControlDescription(' \t\n ')).toBeNull();
+    });
+
+    it('keeps a description of exactly the maximum length', () => {
+      const text = 'a'.repeat(MAX_CUSTOM_CONTROL_LENGTH);
+      expect(normalizeCustomControlDescription(text)).toBe(text);
+    });
+
+    it('clips an over-length description to the maximum', () => {
+      expect(MAX_CUSTOM_CONTROL_LENGTH).toBe(200);
+      const result = normalizeCustomControlDescription('a'.repeat(250));
+      expect(result).toHaveLength(200);
+    });
+
+    it('does not split a surrogate pair at the boundary', () => {
+      const result = normalizeCustomControlDescription('a'.repeat(199) + '🔒' + 'b')!;
+      expect(result).toBe('a'.repeat(199));
+    });
+  });
+
+  describe('pruneNodeCustomControls', () => {
+    it('removes only the given node\'s scopes', () => {
+      const map: CustomControlsMap = {
+        ...custom,
+        'node:n10:t-1': [{ id: 'x', description: 'Other node' }],
+      };
+      expect(pruneNodeCustomControls(map, 'n1')).toEqual({
+        'connection:t-1': custom['connection:t-1'],
+        'zone:t-1': custom['zone:t-1'],
+        'node:n10:t-1': map['node:n10:t-1'],
+      });
+    });
+
+    it('returns the same reference when nothing matches', () => {
+      expect(pruneNodeCustomControls(custom, 'n2')).toBe(custom);
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { Lock, ArrowUp, ArrowDown, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { ActiveThreat, ThreatSeverity } from '../../data/schema';
 import {
@@ -10,8 +10,9 @@ import {
   isThreatMitigated,
   describeThreatMitigation,
 } from '../../data/schema';
-import { useActions, useThreats } from '../../context/ThreatModelContext';
-import { buildControlKey } from '../../utils/controlFingerprint';
+import { useActions } from '../../context/ThreatModelContext';
+import { buildControlKey, buildCustomControlScope } from '../../utils/controlFingerprint';
+import ControlsSection, { type CatalogueControlItem } from './ControlsSection';
 import './ThreatCard.css';
 
 interface ThreatCardProps {
@@ -21,11 +22,25 @@ interface ThreatCardProps {
 export default memo(function ThreatCard({ activeThreat }: ThreatCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { threat, sourceNodeId, sourceTechName, sourceTechnologyId, overriddenSeverity, riskLevel, riskScore, sensitivity, isEscalated, effectiveSensitivity, zoneMultiplier, context, pathwayMitigatedBy, techMitigations } = activeThreat;
-  const { setSeverityOverride, setControlImplemented } = useActions();
-  const { implementedControls } = useThreats();
+  const { setSeverityOverride } = useActions();
   const isMitigated = isThreatMitigated(activeThreat);
   const mitigationDescription = describeThreatMitigation(activeThreat);
   const isReduced = pathwayMitigatedBy?.mode === 'reduce';
+
+  // Tech-specific mitigations replace the generic controls when present
+  const catalogueControls = useMemo<CatalogueControlItem[]>(() => (
+    techMitigations && techMitigations.length > 0
+      ? techMitigations.map((text, index) => ({
+          id: `tech-${index}`,
+          key: buildControlKey({ kind: 'node-tech', nodeId: sourceNodeId, threatId: threat.id }, text),
+          text,
+        }))
+      : threat.controls.map(control => ({
+          id: control.id,
+          key: buildControlKey({ kind: 'node-generic', nodeId: sourceNodeId, threatId: threat.id }, control.description),
+          text: control.description,
+        }))
+  ), [techMitigations, threat.controls, threat.id, sourceNodeId]);
 
   const displaySeverity = overriddenSeverity ?? threat.severity;
   const overrideKey = sourceTechnologyId ? `${sourceTechnologyId}::${threat.id}` : '';
@@ -194,61 +209,10 @@ export default memo(function ThreatCard({ activeThreat }: ThreatCardProps) {
             </div>
           </div>
 
-          {(techMitigations && techMitigations.length > 0) ? (
-            <div className="threat-section">
-              <h4>Mitigating Controls</h4>
-              <ul className="controls-list">
-                {techMitigations.map((mitigation, index) => {
-                  const key = buildControlKey(
-                    { kind: 'node-tech', nodeId: sourceNodeId, threatId: threat.id },
-                    mitigation,
-                  );
-                  const implemented = !!implementedControls[key];
-                  return (
-                    <li key={index} className={`control-item ${implemented ? 'implemented' : ''}`}>
-                      <label className="control-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="control-checkbox"
-                          checked={implemented}
-                          onChange={e => setControlImplemented(key, e.target.checked)}
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <span className="control-text">{mitigation}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ) : threat.controls.length > 0 && (
-            <div className="threat-section">
-              <h4>Mitigating Controls</h4>
-              <ul className="controls-list">
-                {threat.controls.map(control => {
-                  const key = buildControlKey(
-                    { kind: 'node-generic', nodeId: sourceNodeId, threatId: threat.id },
-                    control.description,
-                  );
-                  const implemented = !!implementedControls[key];
-                  return (
-                    <li key={control.id} className={`control-item ${implemented ? 'implemented' : ''}`}>
-                      <label className="control-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="control-checkbox"
-                          checked={implemented}
-                          onChange={e => setControlImplemented(key, e.target.checked)}
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <span className="control-text">{control.description}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+          <ControlsSection
+            catalogueControls={catalogueControls}
+            scopeKey={buildCustomControlScope({ kind: 'node', nodeId: sourceNodeId, threatId: threat.id })}
+          />
         </div>
       )}
     </div>

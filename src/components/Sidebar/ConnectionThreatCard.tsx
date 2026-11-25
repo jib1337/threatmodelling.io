@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { Lock, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { GroupedConnectionThreat } from './ThreatSidebar';
 import {
@@ -7,8 +7,9 @@ import {
   RISK_LEVEL_LABELS,
 } from '../../data/schema';
 import type { ThreatSeverity } from '../../data/schema';
-import { useActions, useThreats } from '../../context/ThreatModelContext';
-import { buildControlKey } from '../../utils/controlFingerprint';
+import { useActions } from '../../context/ThreatModelContext';
+import { buildControlKey, buildCustomControlScope } from '../../utils/controlFingerprint';
+import ControlsSection, { type CatalogueControlItem } from './ControlsSection';
 import './ThreatCard.css';
 
 interface ConnectionThreatCardProps {
@@ -20,8 +21,12 @@ interface ConnectionThreatCardProps {
 export default memo(function ConnectionThreatCard({ groupedThreat, mitigated = false }: ConnectionThreatCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { threat, connections, maxRiskScore, maxRiskLevel } = groupedThreat;
-  const { setSeverityOverride, setControlImplemented } = useActions();
-  const { implementedControls } = useThreats();
+  const { setSeverityOverride } = useActions();
+  const catalogueControls = useMemo<CatalogueControlItem[]>(() => threat.controls.map(control => ({
+    id: control.id,
+    key: buildControlKey({ kind: 'connection', threatId: threat.id }, control.description),
+    text: control.description,
+  })), [threat.controls, threat.id]);
 
   // Connection threats use the first connection's overriddenSeverity (they share the same override)
   const overriddenSeverity = connections[0]?.overriddenSeverity;
@@ -159,34 +164,10 @@ export default memo(function ConnectionThreatCard({ groupedThreat, mitigated = f
             </div>
           </div>
 
-          {threat.controls.length > 0 && (
-            <div className="threat-section">
-              <h4>Mitigating Controls</h4>
-              <ul className="controls-list">
-                {threat.controls.map(control => {
-                  const key = buildControlKey(
-                    { kind: 'connection', threatId: threat.id },
-                    control.description,
-                  );
-                  const implemented = !!implementedControls[key];
-                  return (
-                    <li key={control.id} className={`control-item ${implemented ? 'implemented' : ''}`}>
-                      <label className="control-checkbox-label">
-                        <input
-                          type="checkbox"
-                          className="control-checkbox"
-                          checked={implemented}
-                          onChange={e => setControlImplemented(key, e.target.checked)}
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <span className="control-text">{control.description}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+          <ControlsSection
+            catalogueControls={catalogueControls}
+            scopeKey={buildCustomControlScope({ kind: 'connection', threatId: threat.id })}
+          />
         </div>
       )}
     </div>

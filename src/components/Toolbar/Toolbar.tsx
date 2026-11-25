@@ -41,7 +41,7 @@ export default function Toolbar() {
   const { modelName, setModelName, exportModel, importModel, clearDiagram } = useModel();
   const { nodes, edges, boundaries } = useDiagramState();
   const { canUndo, canRedo, undo, redo } = useHistory();
-  const { activeThreats, implementedControls } = useThreats();
+  const { activeThreats, implementedControls, customControls } = useThreats();
   const { pathwayMitigationSettings: { mitigatedVisibility } } = useSettings();
   const activeThreatCount = useMemo(
     () => activeThreats.filter(t => !isThreatMitigated(t)).length,
@@ -148,21 +148,21 @@ export default function Toolbar() {
       captureDiagramImage(),
       import('../../utils/pdfExport'),
     ]);
-    await generateFullReport(modelName, nodes, edges, activeThreats, diagramImage, implementedControls, mitigatedVisibility);
+    await generateFullReport(modelName, nodes, edges, activeThreats, diagramImage, implementedControls, mitigatedVisibility, customControls);
     showToast('PDF report exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, captureDiagramImage, implementedControls, mitigatedVisibility]);
+  }, [modelName, nodes, edges, activeThreats, captureDiagramImage, implementedControls, mitigatedVisibility, customControls]);
 
   const handleExportMarkdown = useCallback(async () => {
     setExportDropdownOpen(false);
-    await generateMarkdownReport(modelName, nodes, edges, activeThreats, implementedControls, mitigatedVisibility);
+    await generateMarkdownReport(modelName, nodes, edges, activeThreats, implementedControls, mitigatedVisibility, customControls);
     showToast('Markdown report exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, implementedControls, mitigatedVisibility]);
+  }, [modelName, nodes, edges, activeThreats, implementedControls, mitigatedVisibility, customControls]);
 
   const handleExportThreatcl = useCallback(() => {
     setExportDropdownOpen(false);
-    exportThreatcl(modelName, nodes, edges, activeThreats, boundaries, implementedControls, mitigatedVisibility);
+    exportThreatcl(modelName, nodes, edges, activeThreats, boundaries, implementedControls, mitigatedVisibility, customControls);
     showToast('threatcl file exported', { type: 'success' });
-  }, [modelName, nodes, edges, activeThreats, boundaries, implementedControls, mitigatedVisibility]);
+  }, [modelName, nodes, edges, activeThreats, boundaries, implementedControls, mitigatedVisibility, customControls]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
