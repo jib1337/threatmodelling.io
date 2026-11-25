@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Node, Edge } from '@xyflow/react';
-import type { ActiveThreat, TechNodeData, Threat } from '../data/schema';
+import type { ActiveThreat, CustomControlsMap, TechNodeData, Threat } from '../data/schema';
 import { HIDE_ALL_MITIGATED } from '../data/schema';
 
 // --- jsPDF / autoTable mocking ---------------------------------------------
@@ -581,5 +581,58 @@ describe('edge cases', () => {
         null,
       ),
     ).resolves.not.toThrow();
+  });
+});
+
+describe('generateFullReport custom controls', () => {
+  // Text of every control line drawn, in order: each control is drawn as a
+  // single text() call with an array of wrapped lines.
+  function controlLines(doc: MockPDFDoc): string[] {
+    return doc.text.mock.calls
+      .filter(c => Array.isArray(c[0]))
+      .map(c => (c[0] as string[]).join(' '));
+  }
+
+  it('draws custom controls after catalogue ones, unmarked, with tick state', async () => {
+    const at = makeActive(makeThreat({ id: 't-1' }));
+    const custom: CustomControlsMap = {
+      'node:n1:t-1': [
+        { id: 'a', description: 'Quarterly access review' },
+        { id: 'b', description: 'Pen test' },
+      ],
+    };
+    await generateFullReport(
+      'M', [makeNode('n1', 'EC2')], [], [at], null,
+      { 'node:n1:t-1::custom:b': true }, undefined, custom,
+    );
+    const lines = controlLines(lastDoc);
+    const start = lines.indexOf('Apply best practices');
+    expect(lines.slice(start, start + 3)).toEqual([
+      'Apply best practices',
+      'Quarterly access review',
+      'Pen test',
+    ]);
+    // Only the ticked custom control gets a filled checkbox
+    // (roundedRect(x, y, w, h, rx, ry, style) with style 'FD')
+    expect(lastDoc.roundedRect.mock.calls.filter(c => c[6] === 'FD')).toHaveLength(1);
+  });
+
+  it('draws custom controls for zone threats', async () => {
+    const zone = makeActive(makeThreat({ id: 't-zone', name: 'Zone Threat', controls: [] }), {
+      isZoneThreat: true,
+      zoneInfo: { boundaryId: 'z1', zoneName: 'VPC' },
+    });
+    const custom: CustomControlsMap = { 'zone:t-zone': [{ id: 'a', description: 'Egress allow-list' }] };
+    await generateFullReport('M', [], [], [zone], null, {}, undefined, custom);
+    expect(controlLines(lastDoc)).toContain('Egress allow-list');
+  });
+
+  it('draws the same calls as before when there are no custom controls', async () => {
+    const at = makeActive(makeThreat({ id: 't-1' }));
+    await generateFullReport('M', [makeNode('n1', 'EC2')], [], [at], null, {});
+    const before = lastDoc.text.mock.calls.map(c => JSON.stringify(c.slice(0, 1)));
+    await generateFullReport('M', [makeNode('n1', 'EC2')], [], [at], null, {}, undefined, {});
+    const after = lastDoc.text.mock.calls.map(c => JSON.stringify(c.slice(0, 1)));
+    expect(after).toEqual(before);
   });
 });

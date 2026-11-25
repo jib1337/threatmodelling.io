@@ -7,6 +7,7 @@ import type {
   StrideCategory,
   ThreatSeverity,
   MitigatedVisibility,
+  CustomControlsMap,
 } from '../data/schema';
 import {
   DATA_SENSITIVITY_LABELS,
@@ -17,7 +18,8 @@ import {
   getMitigationKind,
   SHOW_ALL_MITIGATED,
 } from '../data/schema';
-import { buildControlKey } from './controlFingerprint';
+import { buildControlKey, buildCustomControlScope } from './controlFingerprint';
+import { getCustomControlReportItems } from './customControls';
 
 // threatcl spec version targeted by this exporter
 const SPEC_VERSION = '0.2.3';
@@ -60,12 +62,20 @@ const SEVERITY_TO_RISK_REDUCTION: Record<ThreatSeverity, number> = {
   'critical': 75,
 };
 
+// HCL evaluates ${...} and %{...} inside quoted strings and heredocs as
+// template interpolation/directives; doubling the sigil ($${, %%{) makes them
+// literal. Without this, user text such as a custom control or node name
+// containing "${x}" makes threatcl fail to parse the file.
+function hclEscapeTemplate(value: string): string {
+  return value.replace(/\$\{/g, '$$${').replace(/%\{/g, '%%{');
+}
+
 function hclEscape(value: string): string {
-  return value
+  return hclEscapeTemplate(value
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/\r?\n/g, '\\n')
-    .replace(/\t/g, '\\t');
+    .replace(/\t/g, '\\t'));
 }
 
 function hclString(value: string): string {
@@ -75,9 +85,13 @@ function hclString(value: string): string {
 // HCL indent-stripping heredoc (<<-EOT) for multi-line values. The leading
 // whitespace on each line is stripped up to the indent of the closing marker,
 // so the parsed value is flush-left regardless of surrounding indentation.
+// Blank lines are left empty rather than indented: HCL doesn't strip a
+// whitespace-only line, so indenting it would leave trailing spaces in the
+// parsed value.
 function hclHeredoc(value: string, indent: string): string {
   const lines = value.split(/\r?\n/);
-  return `<<-EOT\n${lines.map(l => `${indent}${l}`).join('\n')}\n${indent}EOT`;
+  const body = lines.map(l => (l === '' ? '' : `${indent}${hclEscapeTemplate(l)}`)).join('\n');
+  return `<<-EOT\n${body}\n${indent}EOT`;
 }
 
 function hclList(values: string[]): string {
@@ -435,9 +449,45 @@ function resolveControlImplemented(
   return true;
 }
 
+// The custom-control scopes that contribute to a group: one per affected
+// node for component threats, the single consolidated scope otherwise.
+function customControlScopesFor(group: ThreatGroup): string[] {
+  const threatId = group.threat.id;
+  if (group.kind === 'component') {
+    return Array.from(group.componentNodeIds, nodeId =>
+      buildCustomControlScope({ kind: 'node', nodeId, threatId }));
+  }
+  return [buildCustomControlScope({ kind: group.kind, threatId })];
+}
+
+// Custom controls for a group, deduplicated by description across its
+// contributing scopes (in first-seen order).
+function collectCustomControls(
+  group: ThreatGroup,
+  customControls: CustomControlsMap,
+  implementedControls: Record<string, true>,
+): Array<{ description: string; implemented: boolean }> {
+  const scopes = customControlScopesFor(group);
+  const perScope = scopes.map(scope => getCustomControlReportItems(scope, customControls, implementedControls));
+  const order: string[] = [];
+  const seen = new Set<string>();
+  perScope.forEach(items => items.forEach(item => {
+    if (!seen.has(item.text)) {
+      seen.add(item.text);
+      order.push(item.text);
+    }
+  }));
+  return order.map(description => ({
+    description,
+    implemented: perScope.every(items =>
+      items.some(item => item.text === description && item.implemented)),
+  }));
+}
+
 function renderThreats(
   groups: ThreatGroup[],
   implementedControls: Record<string, true>,
+  customControls: CustomControlsMap,
 ): string {
   if (groups.length === 0) return '';
 
@@ -475,7 +525,7 @@ function renderThreats(
 
       const reduction = SEVERITY_TO_RISK_REDUCTION[group.maxSeverity];
       const fromTech = group.techMitigations.size > 0;
-      const controlSources = fromTech
+      const catalogueSources = fromTech
         ? Array.from(group.techMitigations.keys()).map((d, i) => ({
             name: `tech-mitigation-${i + 1}`,
             description: d,
@@ -484,6 +534,17 @@ function renderThreats(
             name: c.id || `control-${i + 1}`,
             description: c.description,
           }));
+      const controlSources = [
+        ...catalogueSources.map(c => ({
+          ...c,
+          implemented: resolveControlImplemented(group, c.description, fromTech, implementedControls),
+        })),
+        ...collectCustomControls(group, customControls, implementedControls).map((c, i) => ({
+          name: `custom-${i + 1}`,
+          description: c.description,
+          implemented: c.implemented,
+        })),
+      ];
 
       // MITRE techniques are packed into each control as attribute blocks —
       // threatcl has no first-class place for them on threats, but control
@@ -502,7 +563,7 @@ function renderThreats(
 
       const controlBlocks = controlSources
         .map((c, idx) => {
-          const implemented = resolveControlImplemented(group, c.description, fromTech, implementedControls);
+          const { implemented } = c;
           const lines = [
             `    control ${hclString(sanitizeLabel(c.name) || `control-${idx + 1}`)} {`,
             `      description = ${hclString(c.description)}`,
@@ -661,6 +722,7 @@ export function generateThreatclDocument(
   boundaries: Node<ZoneNodeData>[],
   implementedControls: Record<string, true> = {},
   mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
+  customControls: CustomControlsMap = {},
 ): string {
   const { active: liveThreats, mitigated: mitigatedThreats } =
     partitionMitigatedThreats(threats, mitigatedVisibility);
@@ -695,7 +757,7 @@ export function generateThreatclDocument(
   }
 
   const groups = groupThreats(liveThreats, assetNameByNodeId, mitigatedThreats);
-  const threatBlocks = renderThreats(groups, implementedControls);
+  const threatBlocks = renderThreats(groups, implementedControls, customControls);
   if (threatBlocks) {
     sections.push('');
     sections.push(threatBlocks);
@@ -719,8 +781,9 @@ export function exportThreatcl(
   boundaries: Node<ZoneNodeData>[],
   implementedControls: Record<string, true> = {},
   mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
+  customControls: CustomControlsMap = {},
 ): void {
-  const hcl = generateThreatclDocument(modelName, nodes, edges, threats, boundaries, implementedControls, mitigatedVisibility);
+  const hcl = generateThreatclDocument(modelName, nodes, edges, threats, boundaries, implementedControls, mitigatedVisibility, customControls);
   const blob = new Blob([hcl], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

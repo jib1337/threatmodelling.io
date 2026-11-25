@@ -14,7 +14,8 @@ import {
   isThreatMitigated,
   partitionMitigatedThreats,
 } from '../data/schema';
-import { getThreatControlKeys } from '../utils/controlFingerprint';
+import { getThreatControlKeys, customControlScopeKey, buildCustomControlKey, getCustomControls } from '../utils/controlFingerprint';
+import { MAX_CUSTOM_CONTROL_LENGTH } from '../data/schema';
 
 // Preload real AWS data so getTechnologyById() resolves during IMPORT_MODEL.
 beforeAll(async () => {
@@ -609,12 +610,12 @@ describe('Export workflow', () => {
     expect(exported.name).toBe('Exported API');
   });
 
-  it('emits version 1.5', async () => {
+  it('emits version 1.6', async () => {
     const { result } = renderHook(() => useThreatModel(), { wrapper });
     await act(async () => {
       await result.current.importModel(baseModel());
     });
-    expect(result.current.exportModel().version).toBe('1.5');
+    expect(result.current.exportModel().version).toBe('1.6');
   });
 
   it('exports nodes with their full shape (id, technologyId, position, sensitivity, customName, zoneId)', async () => {
@@ -863,5 +864,201 @@ describe('Version compatibility', () => {
     });
     const exported = result.current.exportModel();
     expect(exported.implementedControls).toBeUndefined();
+  });
+});
+
+describe('Custom controls', () => {
+  const ec2 = (id = 'n1') => ({ id, technologyId: 'aws-ec2', position: { x: 0, y: 0 }, sensitivity: 'internal' as const });
+
+  async function setup(overrides: Partial<ThreatModel> = {}) {
+    const hook = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => {
+      await hook.result.current.importModel(baseModel({ nodes: [ec2()], ...overrides }));
+    });
+    const target = hook.result.current.activeThreats.find(t => t.sourceNodeId === 'n1')!;
+    return { result: hook.result, target, scope: customControlScopeKey(target) };
+  }
+
+  const controlsIn = (customControls: Record<string, { id: string; description: string }[]>, scope: string) =>
+    customControls[scope] ?? [];
+
+  it('adds a control under the threat instance\'s scope and lists its key', async () => {
+    const { result, target, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, '  Quarterly access review ') });
+    const added = controlsIn(result.current.customControls, scope);
+    expect(added).toHaveLength(1);
+    expect(added[0].description).toBe('Quarterly access review');
+    expect(getThreatControlKeys(target, result.current.customControls))
+      .toContain(buildCustomControlKey(scope, added[0].id));
+  });
+
+  it('clips a 250-character control to 200 characters', async () => {
+    const { result, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, 'a'.repeat(250)); });
+    expect(controlsIn(result.current.customControls, scope)[0].description).toHaveLength(MAX_CUSTOM_CONTROL_LENGTH);
+
+    const { id } = controlsIn(result.current.customControls, scope)[0];
+    act(() => { result.current.updateCustomControl(scope, id, 'b'.repeat(250)); });
+    expect(controlsIn(result.current.customControls, scope)[0].description).toBe('b'.repeat(MAX_CUSTOM_CONTROL_LENGTH));
+  });
+
+  it('keeps the tick when a control is reworded', async () => {
+    const { result, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, 'Original'); });
+    const { id } = controlsIn(result.current.customControls, scope)[0];
+    const key = buildCustomControlKey(scope, id);
+    act(() => { result.current.setControlImplemented(key, true); });
+    act(() => { result.current.updateCustomControl(scope, id, 'Reworded'); });
+    expect(controlsIn(result.current.customControls, scope)[0]).toEqual({ id, description: 'Reworded' });
+    expect(result.current.implementedControls[key]).toBe(true);
+  });
+
+  it('removes the control and its tick', async () => {
+    const { result, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, 'Temporary'); });
+    const { id } = controlsIn(result.current.customControls, scope)[0];
+    const key = buildCustomControlKey(scope, id);
+    act(() => { result.current.setControlImplemented(key, true); });
+    act(() => { result.current.removeCustomControl(scope, id); });
+    expect(result.current.customControls).toEqual({});
+    expect(result.current.implementedControls[key]).toBeUndefined();
+  });
+
+  it('undoes and redoes add, edit and remove', async () => {
+    const { result, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, 'First'); });
+    const { id } = controlsIn(result.current.customControls, scope)[0];
+    act(() => { result.current.updateCustomControl(scope, id, 'Edited'); });
+    act(() => { result.current.removeCustomControl(scope, id); });
+    expect(result.current.customControls).toEqual({});
+
+    act(() => { result.current.undo(); });
+    expect(controlsIn(result.current.customControls, scope)[0].description).toBe('Edited');
+    act(() => { result.current.undo(); });
+    expect(controlsIn(result.current.customControls, scope)[0].description).toBe('First');
+    act(() => { result.current.undo(); });
+    expect(result.current.customControls).toEqual({});
+    act(() => { result.current.redo(); });
+    expect(controlsIn(result.current.customControls, scope)[0].description).toBe('First');
+  });
+
+  it('does not leave an empty undo step for blank input', async () => {
+    const { result, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, 'Real'); });
+    const { id } = controlsIn(result.current.customControls, scope)[0];
+    act(() => {
+      result.current.addCustomControl(scope, '   ');
+      result.current.updateCustomControl(scope, id, '\n\t');
+    });
+    // One undo reverts the real add, not a phantom blank step
+    act(() => { result.current.undo(); });
+    expect(result.current.customControls).toEqual({});
+  });
+
+  it('prunes a node\'s custom controls and their ticks when the node is removed', async () => {
+    const { result, scope } = await setup({ nodes: [ec2('n1'), ec2('n2')] });
+    const otherScope = customControlScopeKey(result.current.activeThreats.find(t => t.sourceNodeId === 'n2')!);
+    act(() => {
+      result.current.addCustomControl(scope, 'On n1');
+      result.current.addCustomControl(otherScope, 'On n2');
+      result.current.addCustomControl('connection:some-threat', 'Shared');
+    });
+    const key = buildCustomControlKey(scope, controlsIn(result.current.customControls, scope)[0].id);
+    act(() => { result.current.setControlImplemented(key, true); });
+
+    act(() => { result.current.removeNode('n1'); });
+    expect(Object.keys(result.current.customControls).sort()).toEqual(['connection:some-threat', otherScope].sort());
+    expect(result.current.implementedControls[key]).toBeUndefined();
+  });
+
+  it('prunes custom controls and all ticks when several nodes are deleted at once', async () => {
+    const { result, target, scope } = await setup({ nodes: [ec2('n1'), ec2('n2')] });
+    act(() => { result.current.addCustomControl(scope, 'On n1'); });
+    const keys = getThreatControlKeys(target, result.current.customControls);
+    act(() => { keys.forEach(k => result.current.setControlImplemented(k, true)); });
+
+    act(() => { result.current.setSelectedNodes(['n1', 'n2']); });
+    act(() => { result.current.removeSelectedNodes(); });
+    expect(result.current.customControls).toEqual({});
+    // Catalogue ticks too: multi-delete previously left them behind
+    expect(result.current.implementedControls).toEqual({});
+  });
+
+  it('counts custom controls towards control-based mitigation', async () => {
+    const { result, target, scope } = await setup({
+      pathwayMitigationSettings: { ...DEFAULT_PATHWAY_MITIGATION_SETTINGS, markControlsMitigated: true },
+    });
+    const find = () => result.current.activeThreats.find(
+      t => t.threat.id === target.threat.id && t.sourceNodeId === 'n1',
+    )!;
+    act(() => { getThreatControlKeys(target).forEach(k => result.current.setControlImplemented(k, true)); });
+    expect(isThreatMitigated(find())).toBe(true);
+
+    // An unticked custom control puts the threat back to active
+    act(() => { result.current.addCustomControl(scope, 'Extra check'); });
+    expect(isThreatMitigated(find())).toBe(false);
+
+    const { id } = getCustomControls(target, result.current.customControls)[0];
+    act(() => { result.current.setControlImplemented(buildCustomControlKey(scope, id), true); });
+    expect(isThreatMitigated(find())).toBe(true);
+  });
+
+  it('exports as v1.6 and round-trips controls and ticks through JSON', async () => {
+    const { result, scope } = await setup();
+    act(() => {
+      result.current.addCustomControl(scope, 'Node control');
+      result.current.addCustomControl('zone:some-threat', 'Zone control');
+    });
+    const { id } = controlsIn(result.current.customControls, scope)[0];
+    act(() => { result.current.setControlImplemented(buildCustomControlKey(scope, id), true); });
+
+    const exported = JSON.parse(JSON.stringify(result.current.exportModel())) as ThreatModel;
+    expect(exported.version).toBe('1.6');
+    expect(exported.customControls).toEqual(result.current.customControls);
+
+    const { result: fresh } = renderHook(() => useThreatModel(), { wrapper });
+    await act(async () => { await fresh.current.importModel(exported); });
+    expect(fresh.current.customControls).toEqual(result.current.customControls);
+    expect(fresh.current.implementedControls).toEqual(result.current.implementedControls);
+  });
+
+  it('omits customControls from the export when there are none', async () => {
+    const { result } = await setup();
+    expect(result.current.exportModel().customControls).toBeUndefined();
+  });
+
+  it('loads a v1.5 file without the field as empty', async () => {
+    const { result } = await setup({ version: '1.5' });
+    expect(result.current.customControls).toEqual({});
+  });
+
+  it('cleans malformed custom controls on import', async () => {
+    const { result } = await setup({
+      customControls: {
+        'node:n1:t-1': [
+          { id: 'long', description: 'c'.repeat(250) },
+          { id: 'long', description: 'duplicate id' },
+          { id: 'blank', description: '  ' },
+        ],
+        'node:missing-node:t-1': [{ id: 'orphan', description: 'Node not in file' }],
+        'not-a-scope': [{ id: 'x', description: 'Bad scope' }],
+      },
+      implementedControls: {
+        'node:n1:t-1::custom:long': true,
+        'node:missing-node:t-1::custom:orphan': true,
+        'constructor::custom:x': true,
+      },
+    });
+    expect(result.current.customControls).toEqual({
+      'node:n1:t-1': [{ id: 'long', description: 'c'.repeat(MAX_CUSTOM_CONTROL_LENGTH) }],
+    });
+    expect(result.current.implementedControls).toEqual({ 'node:n1:t-1::custom:long': true });
+  });
+
+  it('clears custom controls with the diagram', async () => {
+    const { result, scope } = await setup();
+    act(() => { result.current.addCustomControl(scope, 'Gone soon'); });
+    act(() => { result.current.clearDiagram(); });
+    expect(result.current.customControls).toEqual({});
   });
 });

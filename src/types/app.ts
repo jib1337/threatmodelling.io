@@ -138,7 +138,7 @@ export interface ActiveThreat {
     reductionPercent?: number;
   };
   // Set when the user has ticked every control listed for this threat
-  // instance and markControlsMitigated is on (otherwise such a threat stays
+  // instance, catalogue and custom alike, and markControlsMitigated is on (otherwise such a threat stays
   // active). Applied after resolution (see
   // markControlMitigatedThreats), so it never affects scoring.
   controlsImplemented?: true;
@@ -233,6 +233,20 @@ export function describeThreatMitigation(threat: ActiveThreat): string | undefin
   return undefined;
 }
 
+// User-authored control added to a threat alongside the catalogue's own.
+export interface CustomControl {
+  id: string;
+  description: string;
+}
+
+// Custom controls keyed by threat scope, using the same prefixes as
+// implementedControls keys (see controlFingerprint.ts):
+//   node:<nodeId>:<threatId>  |  connection:<threatId>  |  zone:<threatId>
+export type CustomControlsMap = Record<string, CustomControl[]>;
+
+export const MAX_CUSTOM_CONTROL_LENGTH = 200;
+export const MAX_CUSTOM_CONTROLS_PER_SCOPE = 50;
+
 // Model state for export/import
 export interface ThreatModel {
   version: string;
@@ -246,6 +260,7 @@ export interface ThreatModel {
   customTechnologies?: Technology[];
   severityOverrides?: Record<string, ThreatSeverity>;
   implementedControls?: Record<string, true>;
+  customControls?: CustomControlsMap;
 }
 
 export interface ExportedNode {

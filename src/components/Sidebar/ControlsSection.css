@@ -1,0 +1,162 @@
+/* Custom controls inside the threat card's Mitigating Controls. */
+
+.custom-control-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.custom-control-item .control-checkbox-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-control-item .control-text {
+  overflow-wrap: anywhere;
+}
+
+.custom-control-actions {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.custom-control-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.custom-control-icon-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.custom-control-icon-button.danger:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.custom-control-icon-button:focus-visible,
+.custom-control-add:focus-visible,
+.custom-control-text-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.custom-control-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 2px 6px 2px 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.custom-control-add:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.controls-list + .custom-control-add,
+.controls-list + .custom-control-form,
+.controls-list + .custom-control-cap {
+  margin-top: 8px;
+}
+
+h4 + .custom-control-add {
+  margin-top: 0;
+}
+
+.custom-control-cap {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.custom-control-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.custom-control-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.custom-control-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.custom-control-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.custom-control-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.custom-control-counter {
+  margin-right: auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.custom-control-text-button {
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.custom-control-text-button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.custom-control-text-button.primary {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.custom-control-text-button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 85%, var(--text-primary));
+}
+
+.custom-control-text-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

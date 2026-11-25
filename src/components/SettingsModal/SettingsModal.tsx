@@ -311,12 +311,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="mitigation-header">
                 <div className="mitigation-title">
                   <ListChecks size={16} className="mitigation-icon" />
-                  <span>Mark threats with all recommended controls ticked as mitigated</span>
+                  <span>Mark threats with all mitigating controls ticked as mitigated</span>
                 </div>
                 <button
                   className={`toggle-switch ${pathwayMitigationSettings.markControlsMitigated ? 'on' : 'off'}`}
                   onClick={handleMarkControlsToggle}
-                  aria-label="Mark threats with all recommended controls ticked as mitigated"
+                  aria-label="Mark threats with all mitigating controls ticked as mitigated"
                   aria-pressed={pathwayMitigationSettings.markControlsMitigated}
                 >
                   <span className="toggle-knob" />

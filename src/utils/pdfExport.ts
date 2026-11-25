@@ -1,9 +1,10 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
-import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType } from '../data/schema';
+import type { ActiveThreat, TechNodeData, RiskLevel, ZoneNetworkType, CustomControlsMap } from '../data/schema';
 import { STRIDE_LABELS, RISK_LEVEL_LABELS, DATA_SENSITIVITY_LABELS, PROVIDER_LABELS, ZONE_NETWORK_TYPE_LABELS, partitionMitigatedThreats, describeThreatMitigation, SHOW_ALL_MITIGATED } from '../data/schema';
 import type { MitigatedVisibility } from '../data/schema';
 import type { Node, Edge } from '@xyflow/react';
-import { buildControlKey } from './controlFingerprint';
+import { buildControlKey, buildCustomControlScope, customControlScopeKey } from './controlFingerprint';
+import { getCustomControlReportItems } from './customControls';
 
 // Extended jsPDF type to include autoTable
 interface ExtendedJsPDF extends JsPDFType {
@@ -56,6 +57,53 @@ function drawControlCheckbox(doc: ExtendedJsPDF, x: number, y: number, implement
     doc.roundedRect(x, top, size, size, 0.4, 0.4, 'S');
   }
   return size + 1.2;
+}
+
+interface ControlDrawItem {
+  text: string;
+  implemented: boolean;
+}
+
+function drawControlItems(
+  doc: ExtendedJsPDF,
+  items: ControlDrawItem[],
+  margin: number,
+  pageWidth: number,
+  pageHeight: number,
+  startY: number,
+): number {
+  let y = startY;
+  items.forEach(({ text, implemented }) => {
+    if (y > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+    const textX = margin + 2 + drawControlCheckbox(doc, margin + 2, y, implemented);
+    const controlLines = doc.splitTextToSize(text, pageWidth - margin - textX);
+    doc.setTextColor(implemented ? 140 : 60, implemented ? 140 : 60, implemented ? 140 : 60);
+    doc.text(controlLines, textX, y);
+    if (implemented) {
+      const strikeY = y - 1.2;
+      controlLines.forEach((line: string, idx: number) => {
+        const lineWidth = doc.getTextWidth(line);
+        doc.setDrawColor(140, 140, 140);
+        doc.setLineWidth(0.2);
+        doc.line(textX, strikeY + idx * 4, textX + lineWidth, strikeY + idx * 4);
+      });
+    }
+    y += controlLines.length * 4;
+  });
+  return y;
+}
+
+// A scope's custom controls as draw items.
+function customControlItems(
+  scopeKey: string,
+  customControls: CustomControlsMap,
+  implementedControls: Record<string, true>,
+): ControlDrawItem[] {
+  return getCustomControlReportItems(scopeKey, customControls, implementedControls)
+    .map(item => ({ text: item.text, implemented: item.implemented }));
 }
 
 function formatDate(date: Date): string {
@@ -572,7 +620,8 @@ function addZoneThreatPages(
   doc: ExtendedJsPDF,
   threats: ActiveThreat[],
   margin: number,
-  implementedControls: Record<string, true> = {}
+  implementedControls: Record<string, true> = {},
+  customControls: CustomControlsMap = {},
 ): void {
   const groupedZoneThreats = groupZoneThreats(threats);
 
@@ -689,28 +738,18 @@ function addZoneThreatPages(
     y += 4;
 
     doc.setFont('helvetica', 'normal');
-    threat.controls.forEach(control => {
-      if (y > pageHeight - 20) {
-        doc.addPage();
-        y = 20;
-      }
-      const key = buildControlKey({ kind: 'zone', threatId: threat.id }, control.description);
-      const implemented = !!implementedControls[key];
-      const textX = margin + 2 + drawControlCheckbox(doc, margin + 2, y, implemented);
-      const controlLines = doc.splitTextToSize(control.description, pageWidth - margin - textX);
-      doc.setTextColor(implemented ? 140 : 60, implemented ? 140 : 60, implemented ? 140 : 60);
-      doc.text(controlLines, textX, y);
-      if (implemented) {
-        const strikeY = y - 1.2;
-        controlLines.forEach((line: string, idx: number) => {
-          const lineWidth = doc.getTextWidth(line);
-          doc.setDrawColor(140, 140, 140);
-          doc.setLineWidth(0.2);
-          doc.line(textX, strikeY + idx * 4, textX + lineWidth, strikeY + idx * 4);
-        });
-      }
-      y += controlLines.length * 4;
-    });
+    const zoneItems = [
+      ...threat.controls.map(control => ({
+        text: control.description,
+        implemented: !!implementedControls[buildControlKey({ kind: 'zone', threatId: threat.id }, control.description)],
+      })),
+      ...customControlItems(
+        buildCustomControlScope({ kind: 'zone', threatId: threat.id }),
+        customControls,
+        implementedControls,
+      ),
+    ];
+    y = drawControlItems(doc, zoneItems, margin, pageWidth, pageHeight, y);
 
     y += 6;
 
@@ -731,6 +770,7 @@ export async function generateFullReport(
   diagramImage: string | null,
   implementedControls: Record<string, true> = {},
   mitigatedVisibility: MitigatedVisibility = SHOW_ALL_MITIGATED,
+  customControls: CustomControlsMap = {},
 ): Promise<void> {
   // Dynamically import jspdf and jspdf-autotable
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
@@ -880,28 +920,14 @@ export async function generateFullReport(
         : hasTechMitigations
           ? { kind: 'node-tech' as const, nodeId: activeThreat.sourceNodeId, threatId: threat.id }
           : { kind: 'node-generic' as const, nodeId: activeThreat.sourceNodeId, threatId: threat.id };
-      mitigations.forEach(item => {
-        if (y > pageHeight - 20) {
-          doc.addPage();
-          y = 20;
-        }
-        const key = buildControlKey(controlScope, item.text);
-        const implemented = !!implementedControls[key];
-        const textX = margin + 2 + drawControlCheckbox(doc, margin + 2, y, implemented);
-        const controlLines = doc.splitTextToSize(item.text, pageWidth - margin - textX);
-        doc.setTextColor(implemented ? 140 : 60, implemented ? 140 : 60, implemented ? 140 : 60);
-        doc.text(controlLines, textX, y);
-        if (implemented) {
-          const strikeY = y - 1.2;
-          controlLines.forEach((line: string, idx: number) => {
-            const lineWidth = doc.getTextWidth(line);
-            doc.setDrawColor(140, 140, 140);
-            doc.setLineWidth(0.2);
-            doc.line(textX, strikeY + idx * 4, textX + lineWidth, strikeY + idx * 4);
-          });
-        }
-        y += controlLines.length * 4;
-      });
+      const componentItems = [
+        ...mitigations.map(item => ({
+          text: item.text,
+          implemented: !!implementedControls[buildControlKey(controlScope, item.text)],
+        })),
+        ...customControlItems(customControlScopeKey(activeThreat), customControls, implementedControls),
+      ];
+      y = drawControlItems(doc, componentItems, margin, pageWidth, pageHeight, y);
 
       y += 6;
 
@@ -915,7 +941,7 @@ export async function generateFullReport(
   }
 
   // Add zone threat pages (if any private zones exist)
-  addZoneThreatPages(doc, filteredThreats, margin, implementedControls);
+  addZoneThreatPages(doc, filteredThreats, margin, implementedControls, customControls);
 
   // Add mitigated threats on a new page (if any are shown)
   if (mitigatedThreats.length > 0) {
